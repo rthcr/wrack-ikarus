@@ -1,0 +1,22 @@
+{
+  "name": "wrack-ikarus",
+  "version": "1.0.0",
+  "description": "Wrack Ikarus – ein Sci-Fi-Roguelike im Browser",
+  "type": "module",
+  "scripts": {
+    "dev": "npx http-server -p 3000",
+    "lint": "echo 'No linting configured for plain HTML project'",
+    "test": "echo 'No tests configured'"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "game",
+    "roguelike",
+    "sci-fi"
+  ],
+  "author": "",
+  "license": "ISC"
+}
