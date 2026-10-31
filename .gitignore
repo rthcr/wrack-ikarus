@@ -1,0 +1,5 @@
+.claude/settings.local.json
+.claude/.headroom_wrap_marker.json
+.claude/backups/
+.DS_Store
+.claude/.smoke-ok
