@@ -778,6 +778,7 @@ function pickup(){
   if(p.inv.length>=INV){log(`${d.n} liegt hier. Inventar voll: Leg ein Item mit ✕ ab, dann tauschst du direkt.`,'warn');return}
   p.inv.push(it.k);G.items.splice(G.items.indexOf(it),1);log(`Aufgenommen: ${d.n}.`,'good');SFX.pick();
 }
+let medArmed=null;
 function useItem(idx){
   if(!canInput())return;const p=G.p,k=p.inv[idx];if(!k)return;const d=IT[k];
   if(G.target){G.target=null}
@@ -790,7 +791,9 @@ function useItem(idx){
   if(d.slot){const old=p[d.slot];p[d.slot]=k;p.inv.splice(idx,1);if(old)p.inv.push(old);log(`Ausgerüstet: ${d.n}.`,'info');SFX.pick();
     if(combat){p.act=0;afterAction()}else updateUI();return}
   switch(k){
-    case'med':{if(p.hp>=p.max){log('Du bist unverletzt.','dim');updateUI();return}const h=Math.min(12,p.max-p.hp);p.hp+=h;log(`Injektion: +${h} TP.`,'good');SFX.pick();break}
+    case'med':{if(p.hp>=p.max){log('Du bist unverletzt.','dim');updateUI();return}const h=Math.min(12,p.max-p.hp);
+      if(h<12&&!(medArmed&&medArmed.idx===idx&&performance.now()-medArmed.t<3000)){medArmed={idx,t:performance.now()};log(`Injektion heilt jetzt nur ${h} von 12 TP. Zum Bestätigen nochmal wählen (Taste ${idx+1}).`,'warn');updateUI();return}
+      medArmed=null;p.hp+=h;log(`Injektion: +${h} TP.`,'good');SFX.pick();break}
     case'stim':if(!combat){log('Spar dir das Stimulans für den Kampf.','dim');updateUI();return}p.stim=3;log('Kampfstimulans: Angriff +3 für 3 Runden.','info');SFX.pick();break;
     case'scan':if(!combat){log('Der Melder zeigt nichts. Der Raum ist leer.','dim');updateUI();return}
       G.mons.forEach(m=>{if(m.hp>0){m.gx=m.x;m.gy=m.y}});log('Bewegungsmelder: alle Gegner markiert.','info');SFX.emp();break;
@@ -974,6 +977,9 @@ const SKEY='wrack-ikarus-bestenliste-v2';let memScores=[];
 function loadScores(){try{const v=JSON.parse(localStorage.getItem(SKEY)||'null');if(Array.isArray(v))return v}catch(e){}return memScores.slice()}
 function saveScore(e){const a=loadScores();a.push(e);a.sort((x,y)=>y.score-x.score);const top=a.slice(0,10);memScores=top;try{localStorage.setItem(SKEY,JSON.stringify(top))}catch(err){}return top}
 let lastEntry=null;
+// Laufender Run überlebt Neuladen; beendete Runs werden entfernt
+const RKEY='wrack-ikarus-run';
+function saveRun(){try{if(G&&screen==='game'&&!G.over)localStorage.setItem(RKEY,JSON.stringify({G,screen,sel}));else localStorage.removeItem(RKEY)}catch(e){}}
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
   const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
@@ -1111,7 +1117,7 @@ function updateUI(){
   const seenM=G.mons.filter(m=>m.hp>0&&VIS[m.x+m.y*RW]).sort((a,b)=>cheb(a,p)-cheb(b,p));
   $('seenList').innerHTML=seenM.length?seenM.slice(0,6).map(m=>{const d=MON[m.t];
     let s,cl='';if(m.stun>0){s=`gelähmt (${m.stun})`;cl='stun'}else if(!m.aware){s='hat dich noch nicht bemerkt'}else if(canSee(m)){s='sieht dich';cl='see'}else{s='sucht dich'}
-    return`<div class="row"><img alt="" src="${iconURL(monSpr(m.t),'m_'+m.t,20)}"><span>${d.n}${m.elite?' (Elite)':''}</span><span class="mbar"><i style="width:${Math.max(0,m.hp/m.max*100)}%"></i></span><span class="st ${cl}">${s} · ${cheb(m,p)} Felder</span></div>`}).join('')
+    return`<div class="row"><img alt="" src="${iconURL(monSpr(m.t),'m_'+m.t,20)}"><span>${d.n}${m.elite?' (Elite)':''}</span><span class="mbar"><i style="width:${Math.max(0,m.hp/m.max*100)}%"></i></span><span class="st ${cl}">${s} · ${cheb(m,p)} ${cheb(m,p)===1?'Feld':'Felder'}</span></div>`}).join('')
     :`<p class="muted">${G.phase==='explore'?'Raum gesichert.':'Niemand in Sichtlinie. Hinter der Deckung kann trotzdem etwas lauern.'}</p>`;
   const ab=$('abBtn');$('abName').textContent=c.ab;
   $('abSub').textContent=G.phase!=='player'?'nur im Kampf':p.cd>0?`lädt ${p.cd} Rd. · R`:p.act>0?'bereit · R':'Aktion verbraucht';
@@ -1119,6 +1125,7 @@ function updateUI(){
   const fb=$('fireBtn');fb.disabled=!(G.phase==='player'&&!busy);fb.classList.toggle('aim',!!G.target);
   $('fireName').textContent=G.target?'Abbrechen':'Schießen';$('fireSub').textContent=G.target?'Esc':`${p.ammo} Schuss · F`;
   $('log').innerHTML=G.log.slice(0,9).map(l=>`<p class="${l.k}">${l.t}</p>`).join('');
+  saveRun();
 }
 function flashStage(){const s=$('stage');s.classList.add('hurt');setTimeout(()=>s.classList.remove('hurt'),220)}
 function fit(){
@@ -1266,6 +1273,7 @@ window.addEventListener('resize',()=>{if(screen==='game')fit()});
 
 /* ---------- Start ---------- */
 function boot(data){
+  if(!(data&&data.G)){try{const r=JSON.parse(localStorage.getItem(RKEY)||'null');if(r&&r.G)data={...data,...r}}catch(e){}}
   try{if(localStorage.getItem('wrack-ikarus-ton')==='0'){soundOn=false;$('sndBtn').textContent='Ton: aus';$('sndBtn').setAttribute('aria-pressed','false')}}catch(e){}
   let hs='';try{hs=location.hash||''}catch(e){}
   const m=/^#seed-([A-Za-z0-9]{3,10})$/.exec(hs);
