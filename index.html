@@ -112,6 +112,13 @@ p{margin:0}
 .hs .rs.win{color:var(--green)}
 .hs li.new{background:#1b1a14}
 .hs .none{display:block;color:var(--dim);border:0}
+.hs .nm{overflow-wrap:anywhere;color:var(--text)}
+.lbl.sub2{margin-top:6px}
+.seedrow input.name{font-family:var(--f-body);font-size:15px;letter-spacing:0;text-transform:none;color:var(--text)}
+.submit{display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);padding:14px}
+.submit label{font-size:12px;color:var(--dim)}
+.hint.good{color:var(--green)}
+.hint.warn{color:var(--amber)}
 @media (max-width:560px){.hs li{grid-template-columns:2em 5.5em minmax(0,1fr)}.hs .sd,.hs .rs{grid-column:3}}
 
 /* Spiel */
@@ -287,7 +294,9 @@ p{margin:0}
 
     <div class="setup">
       <div class="block">
-        <h2 class="lbl">Bestenliste in diesem Browser</h2>
+        <h2 class="lbl">Bestenliste aller Spieler</h2>
+        <ol class="hs" id="gsTitle"></ol>
+        <h2 class="lbl sub2">Deine Runs in diesem Browser</h2>
         <ol class="hs" id="hsTitle"></ol>
       </div>
       <div class="block go">
@@ -363,6 +372,14 @@ p{margin:0}
     <h1 id="endTitle"></h1>
     <p id="endText"></p>
     <dl class="endstats" id="endStats"></dl>
+    <div class="submit" id="submitBox">
+      <label for="nameIn">Name für die Bestenliste aller Spieler</label>
+      <div class="seedrow">
+        <input id="nameIn" class="name" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="max. 16 Zeichen">
+        <button id="sendBtn" class="btn">Eintragen</button>
+      </div>
+      <p class="hint" id="sendMsg" aria-live="polite"></p>
+    </div>
     <div class="share">
       <label for="shareTxt">Herausforderung für deine Freunde</label>
       <div class="seedrow">
@@ -374,7 +391,9 @@ p{margin:0}
       <button id="againBtn" class="primary">Gleicher Seed, neuer Versuch</button>
       <button id="newBtn" class="btn">Zurück zum Start</button>
     </div>
-    <h2 class="lbl">Bestenliste</h2>
+    <h2 class="lbl">Bestenliste aller Spieler</h2>
+    <ol class="hs" id="gsEnd"></ol>
+    <h2 class="lbl sub2">Deine Runs in diesem Browser</h2>
     <ol class="hs" id="hsEnd"></ol>
   </section>
 </div>
@@ -957,7 +976,7 @@ function saveScore(e){const a=loadScores();a.push(e);a.sort((x,y)=>y.score-x.sco
 let lastEntry=null;
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
-  const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause};
+  const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared};
   lastEntry=entry;saveScore(entry);updateUI();
   setTimeout(()=>{if(G&&G.over)showScreen('end')},G.win?900:1200);
 }
@@ -966,6 +985,40 @@ function renderScores(el,hl){
   if(!list.length){const li=document.createElement('li');li.className='none';li.textContent='Noch keine Einträge. Dein erster Run setzt die Marke.';el.append(li);return}
   list.forEach((s,i)=>{const li=document.createElement('li');if(hl&&s.id===hl)li.className='new';
     li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${s.score.toLocaleString('de-DE')}</span><span>${CLS[s.cls]?CLS[s.cls].n:s.cls}</span><span class="sd">${s.seed}</span><span class="rs${s.win?' win':''}">${s.win?'entkommen':'Raum '+s.room}</span>`;el.append(li)});
+}
+/* Gemeinsame Bestenliste über /api/scores (nur auf der Vercel-Seite erreichbar) */
+const API='/api/scores',NKEY='wrack-ikarus-name';let sending=false;
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function fetchGlobal(){
+  try{const r=await fetch(API,{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)return null;const j=await r.json();return Array.isArray(j.scores)?j.scores:null}catch(e){return null}
+}
+function renderGlobal(el,list,hl){
+  const note=t=>{el.innerHTML='';const li=document.createElement('li');li.className='none';li.textContent=t;el.append(li)};
+  if(list==='loading')return note('Lade Bestenliste …');
+  if(list===null)return note('Die gemeinsame Bestenliste ist hier gerade nicht erreichbar.');
+  if(!list.length)return note('Noch niemand eingetragen. Der erste Platz ist frei.');
+  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${Number(s.score).toLocaleString('de-DE')}</span><span class="nm">${esc(s.name)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''} · ${esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?'entkommen':'Raum '+Number(s.room)}</span></li>`).join('');
+}
+function loadGlobal(el,hl){renderGlobal(el,'loading');fetchGlobal().then(l=>renderGlobal(el,l,hl))}
+function sendMsg(t,k){const m=$('sendMsg');m.textContent=t;m.className='hint'+(k?' '+k:'')}
+async function sendScore(){
+  const e=lastEntry;if(!e||e.sent||sending)return;
+  const name=$('nameIn').value.replace(/\s+/g,' ').trim();
+  if(!name){sendMsg('Bitte gib einen Namen ein.','warn');$('nameIn').focus();return}
+  try{localStorage.setItem(NKEY,name)}catch(x){}
+  sending=true;$('sendBtn').disabled=true;sendMsg('Wird eingetragen …');
+  try{
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,seed:e.seed,cls:e.cls,win:e.win,room:e.room,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){const x=new Error(j.error||'Der Server antwortet nicht');x.server=1;throw x}
+    e.sent=true;e.gid=j.id;
+    sendMsg(`Eingetragen als „${name}“: Platz ${j.rank} von ${j.total}.`,'good');
+    $('nameIn').disabled=true;$('sendBtn').textContent='Eingetragen';
+    renderGlobal($('gsEnd'),j.scores||[],j.id);
+  }catch(err){
+    sendMsg(`Eintragen hat nicht geklappt: ${String(err&&err.server?err.message:'keine Verbindung zum Server').replace(/\.$/,'')}.`,'warn');$('sendBtn').disabled=false;
+  }
+  sending=false;
 }
 function renderEnd(){
   const e=lastEntry;if(!e)return;$('scrEnd').classList.toggle('won',e.win);
@@ -976,6 +1029,11 @@ function renderEnd(){
   $('endStats').innerHTML=items.map(([a,b,big])=>`<div${big?' class="big"':''}><dt>${a}</dt><dd>${b}</dd></div>`).join('');
   $('shareTxt').value=`Wrack Ikarus · Seed ${e.seed} · ${CLS[e.cls].n}: ${e.score.toLocaleString('de-DE')} Punkte (${e.win?'entkommen':'gestorben in Raum '+e.room+'/'+ROOMS}). Schlägst du das?`;
   renderScores($('hsEnd'),e.id);
+  let nm='';try{nm=localStorage.getItem(NKEY)||''}catch(x){}
+  const ni=$('nameIn');if(!e.sent)ni.value=nm;ni.disabled=!!e.sent;
+  $('sendBtn').disabled=!!e.sent;$('sendBtn').textContent=e.sent?'Eingetragen':'Eintragen';
+  if(!e.sent)sendMsg('Trag dich ein, damit alle deinen Run sehen.');
+  loadGlobal($('gsEnd'),e.gid);
 }
 
 /* ---------- Bildschirme ---------- */
@@ -983,7 +1041,7 @@ function showScreen(s){
   screen=s;
   $('scrTitle').hidden=s!=='title';$('scrGame').hidden=s!=='game';$('scrEnd').hidden=s!=='end';
   $('quitBtn').hidden=s!=='game';$('quitBtn').textContent='Run abbrechen';$('quitBtn').classList.remove('warn');
-  if(s==='title'){renderScores($('hsTitle'));drawPreview();$('topInfo').textContent='Bergungseinsatz · Station IKARUS-7'}
+  if(s==='title'){renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent='Bergungseinsatz · Station IKARUS-7'}
   if(s==='game')fit();
   if(s==='end'){renderEnd();$('topInfo').textContent='Einsatzbericht';window.scrollTo(0,0)}
 }
@@ -1164,7 +1222,7 @@ const SFX={
 const CODEMAP={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],KeyW:[0,-1],KeyS:[0,1],KeyA:[-1,0],KeyD:[1,0],KeyQ:[-1,-1],KeyE:[1,-1],KeyZ:[-1,1],KeyC:[1,1],
  Numpad8:[0,-1],Numpad2:[0,1],Numpad4:[-1,0],Numpad6:[1,0],Numpad7:[-1,-1],Numpad9:[1,-1],Numpad1:[-1,1],Numpad3:[1,1]};
 document.addEventListener('keydown',e=>{
-  if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'&&screen==='title'){e.preventDefault();startFromTitle()}return}
+  if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'){if(e.target.id==='nameIn'){e.preventDefault();sendScore()}else if(screen==='title'){e.preventDefault();startFromTitle()}}return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(screen==='title'&&e.key==='Enter'){e.preventDefault();startFromTitle();return}
   if(screen!=='game')return;
@@ -1196,6 +1254,7 @@ $('rollBtn').onclick=()=>{$('seedIn').value=randomSeed();drawPreview()};
 $('seedIn').addEventListener('input',()=>{const v=normSeed($('seedIn').value);if(v!==$('seedIn').value)$('seedIn').value=v;drawPreview()});
 function startFromTitle(){audio();let s=normSeed($('seedIn').value);if(!s){s=randomSeed();$('seedIn').value=s}startRun(s,sel)}
 $('startBtn').onclick=startFromTitle;
+$('sendBtn').onclick=sendScore;
 $('againBtn').onclick=()=>{audio();if(lastEntry)startRun(lastEntry.seed,lastEntry.cls)};
 $('newBtn').onclick=()=>{if(lastEntry){$('seedIn').value=lastEntry.seed;sel=lastEntry.cls;renderClasses()}showScreen('title')};
 $('copyBtn').onclick=()=>{const inp=$('shareTxt'),b=$('copyBtn');
