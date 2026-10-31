@@ -435,7 +435,7 @@ const SPR={
 const CLS={
  marine:{n:'Marine',hp:30,atk:4,def:1,ammo:6,mp:3,dodge:0,ab:'Sperrfeuer',abd:'trifft alle angrenzenden Gegner mit Angriff +3. Abklingzeit 3 Runden.',cd:3,inv:['med'],gear:'Start: Medi-Injektor, 6 Schuss',col:{h:'#8f9a3e',H:'#545b22'}},
  tech:{n:'Technikerin',hp:22,atk:3,def:1,ammo:4,mp:3,dodge:0,ab:'EMP-Impuls',abd:'lähmt alle sichtbaren Gegner 2 Runden, Maschinen nehmen 6 Schaden. Abklingzeit 4 Runden.',cd:4,inv:['med','scan'],gear:'Start: Medi-Injektor, Bewegungsmelder, 4 Schuss',col:{h:'#d7dde3',H:'#7f8b97'}},
- scout:{n:'Späherin',hp:20,atk:3,def:0,ammo:5,mp:4,dodge:.15,ab:'Tarnfeld',abd:'2 Runden unsichtbar, Gegner verlieren deine Spur. 4 Felder Bewegung, weicht 15 % aus.',cd:4,inv:['med','phase'],gear:'Start: Medi-Injektor, Phasenkapsel, 5 Schuss',col:{h:'#d9644a',H:'#7d3020'}}
+ scout:{n:'Späherin',hp:20,atk:3,def:0,ammo:5,mp:4,dodge:.15,ab:'Tarnfeld',abd:'2 Runden unsichtbar, Gegner verlieren deine Spur. 4 Felder Bewegung, weicht 15 % aus.',cd:4,inv:['med','phase'],side:'Nadelpistole',gear:'Start: Medi-Injektor, Phasenkapsel, 5 Schuss, Nadelpistole (ohne Munition, schwach)',col:{h:'#d9644a',H:'#7d3020'}}
 };
 
 const MON={
@@ -725,15 +725,17 @@ function melee(m){
   else{log(`Du verfehlst ${d.acc}.`,'dim');SFX.miss();m.aware=true;m.known={x:G.p.x,y:G.p.y}}
   afterAction();
 }
+const canShoot=()=>G.p.ammo>0||!!CLS[G.cls].side;
 const shootable=m=>m.hp>0&&VIS[m.x+m.y*RW]&&cheb(m,G.p)<=7;
 function shootTargets(){return G.mons.filter(shootable).sort((a,b)=>cheb(a,G.p)-cheb(b,G.p))}
 function shootAt(m){
   const p=G.p;if(p.act<=0){log('Deine Aktion ist schon verbraucht.','dim');updateUI();return}
-  if(p.ammo<=0){log('Keine Munition. Energiezellen laden den Blaster.','warn');updateUI();return}
-  useAction();p.ammo--;G.target=null;
-  fx.push({type:'line',a:{x:p.x,y:p.y},b:{x:m.x,y:m.y},col:'#5fd3e6',t0:performance.now(),dur:180});SFX.shoot();
+  if(!canShoot()){log('Keine Munition. Energiezellen laden den Blaster.','warn');updateUI();return}
+  /* Ohne Munition greift die Späherin zur Nadelpistole: unbegrenzt, aber nur halb so stark. */
+  const side=p.ammo<=0;useAction();if(!side)p.ammo--;G.target=null;
+  fx.push({type:'line',a:{x:p.x,y:p.y},b:{x:m.x,y:m.y},col:side?'#9aa6b2':'#5fd3e6',t0:performance.now(),dur:180});SFX.shoot();
   const d=MON[m.t];
-  if(rnd()<.85){const dmg=Math.max(1,4+Math.floor(p.lvl/2)+ri(0,2)-Math.floor(d.def/2));log(`Blaster trifft ${d.acc}: ${dmg} Schaden.`);hitMon(m,dmg)}
+  if(rnd()<.85){const dmg=Math.max(1,(side?2:4+Math.floor(p.lvl/2))+ri(0,side?1:2)-Math.floor(d.def/2));log(`${side?CLS[G.cls].side:'Blaster'} trifft ${d.acc}: ${dmg} Schaden.`);hitMon(m,dmg)}
   else{log(`Der Schuss verfehlt ${d.acc}.`,'dim');m.aware=true;m.known={x:p.x,y:p.y}}
   afterAction();
 }
@@ -743,7 +745,7 @@ function fireButton(quick){
   if(!inCombat()){log('Hier gibt es nichts mehr zu beschießen.','dim');updateUI();return}
   const p=G.p;
   if(p.act<=0){log('Deine Aktion ist schon verbraucht.','dim');updateUI();return}
-  if(p.ammo<=0){log('Keine Munition.','warn');updateUI();return}
+  if(!canShoot()){log('Keine Munition.','warn');updateUI();return}
   const ts=shootTargets();
   if(!ts.length){log('Kein Gegner in Sicht und Reichweite (7 Felder).','dim');updateUI();return}
   if(ts.length===1||quick){shootAt(ts[0]);return}
@@ -879,8 +881,8 @@ function tileClick(tx,ty){
     if(!inCombat())return;
     if(cheb(m,p)===1){melee(m);return}
     if(p.act<=0){log('Deine Aktion ist schon verbraucht.','dim');updateUI();return}
-    if(shootable(m)&&p.ammo>0){shootAt(m);return}
-    log(p.ammo<=0?'Keine Munition. Lauf hin und kämpf im Nahkampf.':`${MON[m.t].nom} ist zu weit weg (max. 7 Felder).`,'dim');updateUI();return;
+    if(shootable(m)&&canShoot()){shootAt(m);return}
+    log(!canShoot()?'Keine Munition. Lauf hin und kämpf im Nahkampf.':`${MON[m.t].nom} ist zu weit weg (max. 7 Felder).`,'dim');updateUI();return;
   }
   const t=G.map[tx+ty*RW];
   if(G.phase==='explore'&&(t===EXIT||(t===POD&&G.bossDead))){
@@ -1103,7 +1105,7 @@ function updateUI(){
   $('stats').innerHTML=st.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
   const chips=[];if(p.stim>0)chips.push(`<span class="chip a">Stimulans ${p.stim}</span>`);if(p.invis>0)chips.push(`<span class="chip">Getarnt</span>`);
   $('chips').innerHTML=chips.join('');
-  $('equip').innerHTML=`<dt>Waffe</dt><dd>${p.wpn?`${IT[p.wpn].n} (+${IT[p.wpn].v})`:'Fäuste'}</dd><dt>Schutz</dt><dd>${p.arm?`${IT[p.arm].n} (+${IT[p.arm].v})`:'Overall'}</dd><dt>Blaster</dt><dd>${p.ammo} Schuss</dd>`;
+  $('equip').innerHTML=`<dt>Waffe</dt><dd>${p.wpn?`${IT[p.wpn].n} (+${IT[p.wpn].v})`:'Fäuste'}</dd><dt>Schutz</dt><dd>${p.arm?`${IT[p.arm].n} (+${IT[p.arm].v})`:'Overall'}</dd><dt>Blaster</dt><dd>${p.ammo} Schuss</dd>${CLS[G.cls].side?`<dt>Reserve</dt><dd>${CLS[G.cls].side}</dd>`:''}`;
   const inv=$('inv');inv.innerHTML='';
   for(let i=0;i<INV;i++){const k=p.inv[i];const row=document.createElement('div');row.className='slotrow';const b=document.createElement('button');b.className='slot';row.append(b);
     if(!k){b.disabled=true;b.innerHTML=`<span class="kbd">${i+1}</span><span class="empty">leer</span>`}
@@ -1123,7 +1125,7 @@ function updateUI(){
   $('abSub').textContent=G.phase!=='player'?'nur im Kampf':p.cd>0?`lädt ${p.cd} Rd. · R`:p.act>0?'bereit · R':'Aktion verbraucht';
   ab.classList.toggle('ready',G.phase==='player'&&p.cd===0&&p.act>0);ab.disabled=!(G.phase==='player'&&!busy);
   const fb=$('fireBtn');fb.disabled=!(G.phase==='player'&&!busy);fb.classList.toggle('aim',!!G.target);
-  $('fireName').textContent=G.target?'Abbrechen':'Schießen';$('fireSub').textContent=G.target?'Esc':`${p.ammo} Schuss · F`;
+  $('fireName').textContent=G.target?'Abbrechen':'Schießen';$('fireSub').textContent=G.target?'Esc':`${p.ammo<=0&&CLS[G.cls].side?CLS[G.cls].side:p.ammo+' Schuss'} · F`;
   $('log').innerHTML=G.log.slice(0,9).map(l=>`<p class="${l.k}">${l.t}</p>`).join('');
   saveRun();
 }
@@ -1186,7 +1188,7 @@ function render(now){
     if(m.aware&&m.stun<=0){ctx.fillStyle='#ffb000';ctx.fillRect(sx+7,sy,1,2);ctx.fillRect(sx+7,sy+3,1,1)}
     if(m.hp<m.max){ctx.fillStyle='#3a1418';ctx.fillRect(sx,sy+7,8,1);ctx.fillStyle='#ff4d3d';ctx.fillRect(sx,sy+7,Math.max(1,Math.round(8*m.hp/m.max)),1)}
     if(G.active===m.id)brackets(sx,sy,'#ffb000');
-    else if(myTurn&&p.act>0&&!G.target&&(cheb(m,p)===1||(p.ammo>0&&shootable(m))))brackets(sx,sy,'#ff4d3d');
+    else if(myTurn&&p.act>0&&!G.target&&(cheb(m,p)===1||(canShoot()&&shootable(m))))brackets(sx,sy,'#ff4d3d');
     if(G.target&&G.target.kind==='shoot'&&shootable(m))brackets(sx,sy,((now/200)|0)%2?'#ffb000':'#ff4d3d');
   }
   if(G.target&&G.target.kind==='nade'){
