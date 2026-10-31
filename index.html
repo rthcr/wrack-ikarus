@@ -197,6 +197,11 @@ p{margin:0}
 .eq dt{color:var(--dim)}
 .eq dd{margin:0}
 .inv{display:flex;flex-direction:column;gap:6px}
+.slotrow{display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:4px}
+.slotrow>.slot:only-child{grid-column:1/-1}
+.drop{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:2px;font-size:13px;padding:0}
+.drop:hover:not(:disabled){color:var(--red);border-color:var(--red)}
+.drop:disabled{opacity:.45}
 .slot{display:grid;grid-template-columns:20px 24px minmax(0,1fr);gap:2px 8px;align-items:center;text-align:left;background:var(--panel2);border:1px solid var(--line);padding:6px 8px;border-radius:2px}
 .slot:hover:not(:disabled){border-color:var(--amber)}
 .slot:disabled{opacity:.55}
@@ -284,7 +289,7 @@ p{margin:0}
       <div class="block go">
         <h2 class="lbl">3 · Andocken</h2>
         <button id="startBtn" class="primary">Mission starten</button>
-        <p class="keys">Auf ein Feld klicken oder tippen: dorthin laufen. Auf einen Gegner: angreifen. Tastatur: <kbd>Pfeile</kbd>/<kbd>WASD</kbd> ein Feld, diagonal <kbd>Q</kbd><kbd>E</kbd><kbd>Y</kbd><kbd>C</kbd>, <kbd>F</kbd> schießen, <kbd>R</kbd> Fähigkeit, <kbd>1</kbd>–<kbd>6</kbd> Items, <kbd>Leertaste</kbd> Zug beenden, <kbd>Esc</kbd> Zielen abbrechen.</p>
+        <p class="keys">Auf ein Feld klicken oder tippen: dorthin laufen. Auf einen Gegner: angreifen. Tastatur: <kbd>Pfeile</kbd>/<kbd>WASD</kbd> ein Feld, diagonal <kbd>Q</kbd><kbd>E</kbd><kbd>Y</kbd><kbd>C</kbd>, <kbd>F</kbd> schießen, <kbd>R</kbd> Fähigkeit, <kbd>1</kbd>–<kbd>6</kbd> Items benutzen, <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>6</kbd> ablegen, <kbd>G</kbd> aufheben, <kbd>Leertaste</kbd> Zug beenden, <kbd>Esc</kbd> Zielen abbrechen.</p>
       </div>
     </div>
   </section>
@@ -324,7 +329,7 @@ p{margin:0}
           </div>
         </div>
         <div class="log" id="log" aria-live="polite"></div>
-        <p class="keys desk">Klick auf Feld: laufen · Klick auf Gegner: angreifen · Pfeile/WASD ein Feld, diagonal Q E Y C · F schießen · R Fähigkeit · 1–6 Items · Leertaste Zug beenden · Esc Zielen abbrechen</p>
+        <p class="keys desk">Klick auf Feld: laufen · Klick auf Gegner: angreifen · Pfeile/WASD ein Feld, diagonal Q E Y C · F schießen · R Fähigkeit · 1–6 Items · Shift+1–6 ablegen · G aufheben · Leertaste Zug beenden · Esc Zielen abbrechen</p>
       </div>
 
       <aside class="side">
@@ -343,7 +348,7 @@ p{margin:0}
           <h2 class="lbl">Ausrüstung</h2>
           <dl class="eq" id="equip"></dl>
           <div class="inv" id="inv"></div>
-          <p class="muted">Im Kampf kostet ein Item deine Aktion.</p>
+          <p class="muted" id="invHint"></p>
         </div>
       </aside>
     </div>
@@ -747,7 +752,7 @@ function ability(){
 function pickup(){
   const p=G.p,it=itemAt(p.x,p.y);if(!it)return;const d=IT[it.k];
   if(it.k==='cell'){p.ammo+=4;G.items.splice(G.items.indexOf(it),1);log('Energiezelle: +4 Munition.','good');SFX.pick();return}
-  if(p.inv.length>=INV){log(`${d.n} liegt hier. Inventar voll.`,'warn');return}
+  if(p.inv.length>=INV){log(`${d.n} liegt hier. Inventar voll: Leg ein Item mit ✕ ab, dann tauschst du direkt.`,'warn');return}
   p.inv.push(it.k);G.items.splice(G.items.indexOf(it),1);log(`Aufgenommen: ${d.n}.`,'good');SFX.pick();
 }
 function useItem(idx){
@@ -775,6 +780,25 @@ function useItem(idx){
   }
   p.inv.splice(idx,1);
   if(combat){p.act=0;afterAction()}else{computeVis();updateUI()}
+}
+/* Ablegen kostet keine Aktion. Liegt schon etwas unter dir, wird getauscht. */
+function dropItem(idx){
+  if(!canInput())return;const p=G.p,k=p.inv[idx];if(!k)return;
+  G.target=null;
+  const here=itemAt(p.x,p.y);
+  p.inv.splice(idx,1);
+  if(here){
+    G.items.splice(G.items.indexOf(here),1);
+    p.inv.push(here.k);
+    log(`Getauscht: ${IT[k].n} abgelegt, ${IT[here.k].n} aufgenommen.`,'info');SFX.pick();
+  }else log(`Abgelegt: ${IT[k].n}. Klick auf dein Feld oder G hebt es wieder auf.`,'info');
+  G.items.push({k,x:p.x,y:p.y});SFX.drop();
+  updateUI();
+}
+function pickupHere(){
+  if(!canInput())return;
+  if(!itemAt(G.p.x,G.p.y)){log('Hier liegt nichts.','dim');updateUI();return}
+  pickup();updateUI();
 }
 function throwNade(tx,ty){
   const p=G.p,slot=G.target.slot;G.target=null;
@@ -842,7 +866,7 @@ function tileClick(tx,ty){
   if(t===POD&&!G.bossDead){log('Die Kapsel ist verriegelt, solange die Brutmutter lebt.','warn');updateUI();return}
   if(t===DOOR){log(G.phase==='explore'?'Diese Tür bleibt verriegelt.':'Verriegelt. Erst muss der Raum sauber sein.','dim');updateUI();return}
   const i=tx+ty*RW;
-  if(i===p.x+p.y*RW)return;
+  if(i===p.x+p.y*RW){if(itemAt(tx,ty))pickupHere();return}
   if(REACH[i]<0){if(t===FLOOR&&inCombat())log(`Zu weit. Du hast noch ${p.mp} Feld${p.mp===1?'':'er'} Bewegung.`,'dim');updateUI();return}
   walk(pathTo(i));
 }
@@ -1011,12 +1035,15 @@ function updateUI(){
   $('chips').innerHTML=chips.join('');
   $('equip').innerHTML=`<dt>Waffe</dt><dd>${p.wpn?`${IT[p.wpn].n} (+${IT[p.wpn].v})`:'Fäuste'}</dd><dt>Schutz</dt><dd>${p.arm?`${IT[p.arm].n} (+${IT[p.arm].v})`:'Overall'}</dd><dt>Blaster</dt><dd>${p.ammo} Schuss</dd>`;
   const inv=$('inv');inv.innerHTML='';
-  for(let i=0;i<INV;i++){const k=p.inv[i];const b=document.createElement('button');b.className='slot';
+  for(let i=0;i<INV;i++){const k=p.inv[i];const row=document.createElement('div');row.className='slotrow';const b=document.createElement('button');b.className='slot';row.append(b);
     if(!k){b.disabled=true;b.innerHTML=`<span class="kbd">${i+1}</span><span class="empty">leer</span>`}
     else{const d=IT[k];const ds=d.slot?(d.slot==='wpn'?`+${d.v} Angriff · ausrüsten`:`+${d.v} Panzerung · ausrüsten`):d.d;
       b.innerHTML=`<span class="kbd">${i+1}</span><img alt="" src="${iconURL(itemSpr(k),'i_'+k,24)}"><span class="nm">${d.n}</span><span class="ds">${ds}</span>`;
-      b.disabled=!canInput();b.onclick=()=>useItem(i)}
-    inv.append(b)}
+      b.disabled=!canInput();b.onclick=()=>useItem(i);
+      const x=document.createElement('button');x.className='drop';x.textContent='✕';x.title='Ablegen';x.setAttribute('aria-label',`${d.n} ablegen`);x.disabled=!canInput();x.onclick=()=>dropItem(i);row.append(x)}
+    inv.append(row)}
+  const under=itemAt(p.x,p.y);
+  $('invHint').textContent=under?`Unter dir: ${IT[under.k].n}. Klick auf dein Feld oder G hebt es auf${p.inv.length>=INV?', ✕ tauscht direkt':''}.`:'Benutzen kostet im Kampf deine Aktion. Ablegen mit ✕ ist kostenlos.';
   const seenM=G.mons.filter(m=>m.hp>0&&VIS[m.x+m.y*RW]).sort((a,b)=>cheb(a,p)-cheb(b,p));
   $('seenList').innerHTML=seenM.length?seenM.slice(0,6).map(m=>{const d=MON[m.t];
     let s,cl='';if(m.stun>0){s=`gelähmt (${m.stun})`;cl='stun'}else if(!m.aware){s='hat dich noch nicht bemerkt'}else if(canSee(m)){s='sieht dich';cl='see'}else{s='sucht dich'}
@@ -1099,6 +1126,7 @@ function render(now){
   ctx.globalAlpha=p.invis>0?.45:1;
   if(G.alive)ctx.drawImage(playerSpr(G.cls),px,py);else{ctx.fillStyle='#8f1f1a';ctx.fillRect(px+1,py+5,6,2);ctx.fillStyle='#ff4d3d';ctx.fillRect(px+2,py+5,2,1)}
   ctx.globalAlpha=1;
+  if(G.alive&&itemAt(p.x,p.y)){ctx.fillStyle=((now/300)|0)%2?'#ffe066':'#ffb000';ctx.fillRect(px+6,py+7,2,1);ctx.fillRect(px+7,py+6,1,1)}
   if(now-hurtT<160){ctx.fillStyle='rgba(255,77,61,.45)';ctx.fillRect(px,py,8,8)}
   fx=fx.filter(f=>now-f.t0<f.dur);
   for(const f of fx){const k=1-(now-f.t0)/f.dur;
@@ -1121,7 +1149,7 @@ const SFX={
  hurt:()=>beep(130,.16,'sawtooth',.06,-70),shoot:()=>beep(1100,.12,'square',.035,-850),
  zap:()=>beep(700,.1,'sawtooth',.03,-400),spit:()=>{noise(.18,.08);beep(260,.15,'triangle',.04,-120)},
  pick:()=>{beep(660,.06,'square',.04);setTimeout(()=>beep(990,.08,'square',.04),60)},
- kill:()=>beep(320,.22,'triangle',.07,-260),
+ kill:()=>beep(320,.22,'triangle',.07,-260),drop:()=>beep(440,.07,'square',.035,-200),
  lvl:()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.1,'square',.04),i*80)),
  lift:()=>beep(420,.5,'sine',.06,-320),die:()=>{beep(300,1.1,'sawtooth',.07,-260);noise(.5,.05)},
  emp:()=>beep(90,.45,'sawtooth',.06,700),boom:()=>{noise(.45,.14);beep(90,.35,'sawtooth',.06,-50)},
@@ -1145,7 +1173,8 @@ document.addEventListener('keydown',e=>{
   if(d){e.preventDefault();stepPlayer(d[0],d[1]);return}
   if(e.code==='KeyF'){e.preventDefault();fireButton(true);return}
   if(e.code==='KeyR'){e.preventDefault();ability();return}
-  const m=/^Digit([1-6])$/.exec(e.code);if(m){e.preventDefault();useItem(+m[1]-1)}
+  if(e.code==='KeyG'){e.preventDefault();pickupHere();return}
+  const m=/^Digit([1-6])$/.exec(e.code);if(m){e.preventDefault();if(e.shiftKey)dropItem(+m[1]-1);else useItem(+m[1]-1)}
 });
 document.querySelectorAll('.pad button').forEach(b=>b.addEventListener('click',()=>{const[dx,dy]=b.dataset.d.split(',').map(Number);stepPlayer(dx,dy)}));
 const tileFrom=e=>{const r=cv.getBoundingClientRect();return{x:Math.floor((e.clientX-r.left)/r.width*RW),y:Math.floor((e.clientY-r.top)/r.height*RH)}};
