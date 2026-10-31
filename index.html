@@ -976,8 +976,9 @@ function saveScore(e){const a=loadScores();a.push(e);a.sort((x,y)=>y.score-x.sco
 let lastEntry=null;
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
-  const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared};
-  lastEntry=entry;saveScore(entry);updateUI();
+  const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
+  // Abgebrochene Runs zählen nicht für die Bestenliste
+  lastEntry=entry;if(!entry.quit)saveScore(entry);updateUI();
   setTimeout(()=>{if(G&&G.over)showScreen('end')},G.win?900:1200);
 }
 function renderScores(el,hl){
@@ -1002,7 +1003,7 @@ function renderGlobal(el,list,hl){
 function loadGlobal(el,hl){renderGlobal(el,'loading');fetchGlobal().then(l=>renderGlobal(el,l,hl))}
 function sendMsg(t,k){const m=$('sendMsg');m.textContent=t;m.className='hint'+(k?' '+k:'')}
 async function sendScore(){
-  const e=lastEntry;if(!e||e.sent||sending)return;
+  const e=lastEntry;if(!e||e.quit||e.sent||sending)return;
   const name=$('nameIn').value.replace(/\s+/g,' ').trim();
   if(!name){sendMsg('Bitte gib einen Namen ein.','warn');$('nameIn').focus();return}
   try{localStorage.setItem(NKEY,name)}catch(x){}
@@ -1022,13 +1023,14 @@ async function sendScore(){
 }
 function renderEnd(){
   const e=lastEntry;if(!e)return;$('scrEnd').classList.toggle('won',e.win);
-  $('endEyebrow').textContent=e.win?'Rettungskapsel gestartet':'Signal verloren';
-  $('endTitle').textContent=e.win?'Entkommen':'Gefallen in Raum '+e.room;
-  $('endText').textContent=e.win?`Als ${CLS[e.cls].n} hast du die Brutmutter getötet und die IKARUS-7 lebend verlassen.`:`${e.cause?'Getötet durch: '+e.cause+'. ':''}Die Bergungsakte für ${CLS[e.cls].n} wird geschlossen.`;
+  $('endEyebrow').textContent=e.win?'Rettungskapsel gestartet':e.quit?'Rückzug angeordnet':'Signal verloren';
+  $('endTitle').textContent=e.win?'Entkommen':e.quit?'Abgebrochen in Raum '+e.room:'Gefallen in Raum '+e.room;
+  $('endText').textContent=e.win?`Als ${CLS[e.cls].n} hast du die Brutmutter getötet und die IKARUS-7 lebend verlassen.`:e.quit?`Du hast den Einsatz als ${CLS[e.cls].n} abgebrochen. Abgebrochene Runs kommen nicht in die Bestenliste.`:`${e.cause?'Getötet durch: '+e.cause+'. ':''}Die Bergungsakte für ${CLS[e.cls].n} wird geschlossen.`;
   const items=[['Punkte',e.score.toLocaleString('de-DE'),1],['Raum',`${e.room}/${ROOMS}`],['Stufe',e.lvl],['Abschüsse',e.kills],['Runden',e.rounds],['Seed',e.seed]];
   $('endStats').innerHTML=items.map(([a,b,big])=>`<div${big?' class="big"':''}><dt>${a}</dt><dd>${b}</dd></div>`).join('');
-  $('shareTxt').value=`Wrack Ikarus · Seed ${e.seed} · ${CLS[e.cls].n}: ${e.score.toLocaleString('de-DE')} Punkte (${e.win?'entkommen':'gestorben in Raum '+e.room+'/'+ROOMS}). Schlägst du das?`;
+  $('shareTxt').value=`Wrack Ikarus · Seed ${e.seed} · ${CLS[e.cls].n}: ${e.score.toLocaleString('de-DE')} Punkte (${e.win?'entkommen':(e.quit?'abgebrochen':'gestorben')+' in Raum '+e.room+'/'+ROOMS}). Schlägst du das?`;
   renderScores($('hsEnd'),e.id);
+  $('submitBox').hidden=!!e.quit;
   let nm='';try{nm=localStorage.getItem(NKEY)||''}catch(x){}
   const ni=$('nameIn');if(!e.sent)ni.value=nm;ni.disabled=!!e.sent;
   $('sendBtn').disabled=!!e.sent;$('sendBtn').textContent=e.sent?'Eingetragen':'Eintragen';
@@ -1249,7 +1251,7 @@ $('sndBtn').onclick=()=>{soundOn=!soundOn;audio();$('sndBtn').textContent='Ton: 
 let quitArmed=null;
 $('quitBtn').onclick=()=>{const b=$('quitBtn');
   if(!quitArmed){b.textContent='Wirklich abbrechen?';b.classList.add('warn');quitArmed=setTimeout(()=>{quitArmed=null;b.textContent='Run abbrechen';b.classList.remove('warn')},3000);return}
-  clearTimeout(quitArmed);quitArmed=null;if(G&&!G.over){G.alive=false;G.cause='Einsatzabbruch';log('Einsatz abgebrochen.','warn');finish()}};
+  clearTimeout(quitArmed);quitArmed=null;if(G&&!G.over){G.alive=false;G.quit=true;G.cause='Einsatzabbruch';log('Einsatz abgebrochen.','warn');finish()}};
 $('rollBtn').onclick=()=>{$('seedIn').value=randomSeed();drawPreview()};
 $('seedIn').addEventListener('input',()=>{const v=normSeed($('seedIn').value);if(v!==$('seedIn').value)$('seedIn').value=v;drawPreview()});
 function startFromTitle(){audio();let s=normSeed($('seedIn').value);if(!s){s=randomSeed();$('seedIn').value=s}startRun(s,sel)}
