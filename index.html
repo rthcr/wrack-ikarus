@@ -84,6 +84,7 @@ p{margin:0}
 .cls .ab{grid-column:1/-1;font-size:12px}
 .cls .ab b{color:var(--cyan);font-weight:600}
 .cls .gear{grid-column:1/-1;font-size:11px;color:var(--dim)}
+.cls .lp{grid-column:1/-1;font-size:11px;color:var(--amber)}
 .cls[aria-pressed="true"]{border-color:var(--amber);background:#1b1a14;box-shadow:inset 3px 0 0 var(--amber)}
 .cls:hover{border-color:var(--dim)}
 .cls[aria-pressed="true"]:hover{border-color:var(--amber)}
@@ -164,7 +165,14 @@ p{margin:0}
 .bar.mid i{background:var(--amber)}
 .tag{color:var(--dim)}
 .tag b{color:var(--text);font-weight:600}
-.actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.actions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.lvlup{position:absolute;inset:0;background:rgba(5,7,10,.88);display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:10px;padding:12px}
+.lvlup .lbl{flex-basis:100%;text-align:center;margin:0}
+.card{background:var(--panel2);border:1px solid var(--line);padding:12px;width:150px;display:flex;flex-direction:column;gap:6px;text-align:left;border-radius:2px}
+.card:hover,.card:focus-visible{border-color:var(--amber)}
+.card .kbd{align-self:flex-start}
+.card b{font-family:var(--f-display);color:var(--amber);font-weight:400}
+.card span:last-child{font-size:12px;color:var(--dim)}
 .act{background:var(--panel);border:1px solid var(--line);padding:10px 8px;border-radius:2px;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
 .act:hover:not(:disabled){border-color:var(--dim)}
 .act:disabled{opacity:.45}
@@ -302,7 +310,7 @@ p{margin:0}
       <div class="block go">
         <h2 class="lbl">3 · Andocken</h2>
         <button id="startBtn" class="primary">Mission starten</button>
-        <p class="keys">Auf ein Feld klicken oder tippen: dorthin laufen. Auf einen Gegner: angreifen. Tastatur: <kbd>Pfeile</kbd>/<kbd>WASD</kbd> ein Feld, diagonal <kbd>Q</kbd><kbd>E</kbd><kbd>Y</kbd><kbd>C</kbd>, <kbd>F</kbd> schießen, <kbd>R</kbd> Fähigkeit, <kbd>1</kbd>–<kbd>6</kbd> Items benutzen, <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>6</kbd> ablegen, <kbd>G</kbd> aufheben, <kbd>Leertaste</kbd> Zug beenden, <kbd>Esc</kbd> Zielen abbrechen.</p>
+        <p class="keys">Auf ein Feld klicken oder tippen: dorthin laufen. Auf einen Gegner: angreifen. Tastatur: <kbd>Pfeile</kbd>/<kbd>WASD</kbd> ein Feld, diagonal <kbd>Q</kbd><kbd>E</kbd><kbd>Y</kbd><kbd>C</kbd>, <kbd>F</kbd> schießen, <kbd>R</kbd> Fähigkeit, <kbd>T</kbd> freigeschaltete Fähigkeit, <kbd>1</kbd>–<kbd>6</kbd> Items benutzen, <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>6</kbd> ablegen, <kbd>G</kbd> aufheben, <kbd>Leertaste</kbd> Zug beenden, <kbd>Esc</kbd> Zielen abbrechen.</p>
       </div>
     </div>
   </section>
@@ -313,6 +321,7 @@ p{margin:0}
         <div class="stage" id="stage">
           <canvas id="cv" width="136" height="104" aria-label="Spielfeld"></canvas>
           <div class="banner" id="banner" aria-live="polite"></div>
+          <div class="lvlup" id="lvlUp" hidden></div>
         </div>
         <div class="turn" id="turnBar">
           <div class="who"><span class="rnd" id="rndTxt">Runde 1</span><span class="ph" id="phTxt">Dein Zug</span></div>
@@ -327,6 +336,7 @@ p{margin:0}
         <div class="actions">
           <button class="act" id="fireBtn"><span class="t" id="fireName">Schießen</span><span class="s" id="fireSub">F</span></button>
           <button class="act" id="abBtn"><span class="t" id="abName">Fähigkeit</span><span class="s" id="abSub">R</span></button>
+          <button class="act" id="ab2Btn" hidden><span class="t" id="ab2Name"></span><span class="s" id="ab2Sub">T</span></button>
         </div>
         <div class="touch">
           <div class="pad" aria-label="Steuerkreuz">
@@ -342,7 +352,7 @@ p{margin:0}
           </div>
         </div>
         <div class="log" id="log" aria-live="polite"></div>
-        <p class="keys desk">Klick auf Feld: laufen · Klick auf Gegner: angreifen · Pfeile/WASD ein Feld, diagonal Q E Y C · F schießen · R Fähigkeit · 1–6 Items · Shift+1–6 ablegen · G aufheben · Leertaste Zug beenden · Esc Zielen abbrechen</p>
+        <p class="keys desk">Klick auf Feld: laufen · Klick auf Gegner: angreifen · Pfeile/WASD ein Feld, diagonal Q E Y C · F schießen · R Fähigkeit · T freigeschaltete Fähigkeit · 1–6 Items · Shift+1–6 ablegen · G aufheben · Leertaste Zug beenden · Esc Zielen abbrechen</p>
       </div>
 
       <aside class="side">
@@ -437,6 +447,22 @@ const CLS={
  tech:{n:'Technikerin',hp:22,atk:3,def:1,ammo:4,mp:3,dodge:0,ab:'EMP-Impuls',abd:'lähmt alle sichtbaren Gegner 2 Runden, Maschinen nehmen 6 Schaden. Abklingzeit 4 Runden.',cd:4,inv:['med','scan'],gear:'Start: Medi-Injektor, Bewegungsmelder, 4 Schuss',col:{h:'#d7dde3',H:'#7f8b97'}},
  scout:{n:'Späherin',hp:20,atk:3,def:0,ammo:5,mp:4,dodge:.15,ab:'Tarnfeld',abd:'2 Runden unsichtbar, Gegner verlieren deine Spur. 4 Felder Bewegung, weicht 15 % aus.',cd:4,inv:['med','phase'],side:'Nadelpistole',gear:'Start: Medi-Injektor, Phasenkapsel, 5 Schuss, Nadelpistole (ohne Munition, schwach)',col:{h:'#d9644a',H:'#7d3020'}}
 };
+/* Dauerhafte Freischaltungen pro Klasse: LP sind alle EP, die je mit der Klasse gesammelt wurden. */
+const UNL=[100,300,600];
+const UNLD={
+ marine:['Startet mit +5 TP','Sperrfeuer: Abklingzeit 2','Splittergranate (T): 8 Schaden im 3×3-Feld, bis 5 Felder, Abklingzeit 4'],
+ tech:['Startet mit einer Energiezelle (+4 Munition)','EMP lähmt 3 Runden','Schildgenerator (T): 2 Runden kein Schaden durch Gegner, Abklingzeit 5'],
+ scout:['Nadelpistole macht vollen Schaden','Tarnfeld hält 3 Runden','Hinterhalt: Angriff aus der Tarnung macht doppelten Schaden']};
+const AB2={marine:{n:'Splittergranate',cd:4},tech:{n:'Schildgenerator',cd:5}};
+/* Upgrades beim Stufenaufstieg: 3 zufällige zur Wahl, gelten bis Run-Ende. */
+const PERKS={
+ hp:{n:'Zähigkeit',d:'Max. TP +6, heilt 6',f:p=>{p.max+=6;p.hp=Math.min(p.max,p.hp+6)}},
+ atk:{n:'Kraft',d:'Angriff +1',f:p=>{p.atk++}},
+ def:{n:'Panzerplatten',d:'Panzerung +1',f:p=>{p.def++}},
+ ammo:{n:'Munitionsgurt',d:'+3 Schuss',f:p=>{p.ammo+=3}},
+ dodge:{n:'Reflexe',d:'Ausweichen +5 %',ok:()=>dodge()<.5,f:p=>{p.dodge=(p.dodge||0)+.05}},
+ cd:{n:'Fokus',d:'Abklingzeit der Fähigkeit −1',ok:()=>abCd()>1,f:p=>{p.cdr=(p.cdr||0)+1}},
+ med:{n:'Nachschub',d:'ein Medi-Injektor ins Inventar',ok:()=>G.p.inv.length<INV,f:p=>{p.inv.push('med')}}};
 
 const MON={
  larva:{nom:'Die Larve',acc:'die Larve',n:'Larve',hp:4,atk:2,def:0,mp:3,xp:2},
@@ -594,9 +620,11 @@ const cv=$('cv'),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
 const atk=()=>G.p.atk+(G.p.wpn?IT[G.p.wpn].v:0)+(G.p.stim>0?3:0);
 const def=()=>G.p.def+(G.p.arm?IT[G.p.arm].v:0);
 const need=l=>8+l*6;
+const dodge=()=>(CLS[G.cls].dodge||0)+(G.p.dodge||0);
+const abCd=()=>Math.max(1,CLS[G.cls].cd-(G.cls==='marine'&&unl(1)?1:0)-(G.p.cdr||0));
 const score=()=>G.xpTotal*10+G.cleared*150+(G.win?2500+Math.max(0,1500-G.rounds*12):0);
 const live=()=>screen==='game'&&G&&G.alive&&!G.over;
-const canInput=()=>live()&&!busy&&(G.phase==='player'||G.phase==='explore');
+const canInput=()=>live()&&!busy&&!G.offer&&(G.phase==='player'||G.phase==='explore');
 const inCombat=()=>G.phase==='player';
 const monAt=(x,y)=>G.mons.find(m=>m.hp>0&&m.x===x&&m.y===y);
 const visMonAt=(x,y)=>{const m=monAt(x,y);return m&&VIS[x+y*RW]?m:null};
@@ -613,7 +641,8 @@ function startRun(seed,cls){
   const c=CLS[cls];
   G={seed,cls,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
      map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,
-     p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,invis:0,stim:0,mp:c.mp,act:1}};
+     p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
+  if(unl(0))startPerk();
   finishing=false;busy=false;pendingEnd=false;fx=[];hover=null;
   try{history.replaceState(null,'','#seed-'+seed)}catch(e){}
   log('Andockschleuse offen. Die Luft riecht nach Ozon und etwas Süßlichem.','warn');
@@ -636,6 +665,8 @@ function enterRoom(idx,entry){
 function startRound(){
   const p=G.p;G.round++;G.rounds++;
   if(p.cd>0)p.cd--;
+  if(p.cd2>0)p.cd2--;
+  if(p.shield>0){p.shield--;if(!p.shield)log('Der Schild bricht zusammen.','warn')}
   if(p.stim>0){p.stim--;if(!p.stim)log('Das Stimulans lässt nach.','dim')}
   if(p.invis>0){p.invis--;if(!p.invis)log('Das Tarnfeld erlischt.','warn')}
   p.mp=CLS[G.cls].mp;p.act=1;G.phase='player';G.target=null;pendingEnd=false;
@@ -644,11 +675,11 @@ function startRound(){
   computeVis();updateUI();
 }
 function endTurn(){
-  if(!live()||busy||G.phase!=='player')return;
+  if(!live()||busy||G.offer||G.phase!=='player')return;
   enemyPhase();
 }
 function autoEnd(){
-  if(G.phase==='player'&&G.p.mp<=0&&G.p.act<=0&&!pendingEnd&&live()){
+  if(!G.offer&&G.phase==='player'&&G.p.mp<=0&&G.p.act<=0&&!pendingEnd&&live()){
     pendingEnd=true;setTimeout(()=>{pendingEnd=false;if(live()&&G.phase==='player'&&!busy&&G.p.mp<=0&&G.p.act<=0)endTurn()},500);
   }
 }
@@ -704,14 +735,30 @@ function dropLoot(m,d){
 }
 function gainXp(x){
   G.xpTotal+=x;const p=G.p;p.xp+=x;
-  while(p.xp>=need(p.lvl)){p.xp-=need(p.lvl);p.lvl++;p.max+=4;p.hp=Math.min(p.max,p.hp+4);
-    let extra='';if(p.lvl%2===0){p.atk++;extra+=', Angriff +1'}if(p.lvl%3===0){p.def++;extra+=', Panzerung +1'}
-    log(`Stufe ${p.lvl}! Max. TP +4${extra}.`,'good');SFX.lvl()}
+  const was=lp(G.cls),now=addLP(G.cls,x);
+  UNL.forEach((t,i)=>{if(was<t&&now>=t){log(`Freigeschaltet: ${UNLD[G.cls][i]}.`,'good');banner('Neue Fähigkeit','good');if(i===0)startPerk()}});
+  while(p.xp>=need(p.lvl)){p.xp-=need(p.lvl);p.lvl++;p.max+=2;p.hp=Math.min(p.max,p.hp+2);G.picks=(G.picks||0)+1;
+    log(`Stufe ${p.lvl}! Max. TP +2. Wähle ein Upgrade.`,'good');SFX.lvl()}
+  if(G.picks&&!G.offer)offerPerks();
+}
+function startPerk(){const p=G.p;if(G.cls==='marine'){p.max+=5;p.hp+=5}else if(G.cls==='tech')p.ammo+=4}
+function offerPerks(){
+  const ks=Object.keys(PERKS).filter(k=>!PERKS[k].ok||PERKS[k].ok());
+  G.offer=[];while(G.offer.length<3&&ks.length)G.offer.push(ks.splice(Math.floor(rnd()*ks.length),1)[0]);
+  G.target=null;
+}
+function takePerk(i){
+  const k=G.offer&&G.offer[i];if(!k||!live())return;const d=PERKS[k];
+  d.f(G.p);log(`Upgrade: ${d.n}, ${d.d}.`,'good');SFX.pick();
+  G.offer=null;G.picks--;if(G.picks>0)offerPerks();
+  computeVis();updateUI();autoEnd();
 }
 function hurtPlayer(dmg,cause){const p=G.p;p.hp-=dmg;hurtT=performance.now();flashStage();if(p.hp<=0){p.hp=0;die(cause)}}
 function monAttack(m,base,verb){
-  const d=MON[m.t],dodge=CLS[G.cls].dodge||0;
-  if(rnd()<.8-dodge){const dmg=Math.max(1,base+ri(-1,1)-def());log(`${d.nom} ${verb} dich: ${dmg} Schaden.`,'hurt');SFX.hurt();hurtPlayer(dmg,d.nom)}
+  const d=MON[m.t];
+  const hit=rnd()<.8-dodge();
+  if(hit&&G.p.shield>0){log(`${d.nom} ${verb} dich, der Schild hält.`,'dim');SFX.miss()}
+  else if(hit){const dmg=Math.max(1,base+ri(-1,1)-def());log(`${d.nom} ${verb} dich: ${dmg} Schaden.`,'hurt');SFX.hurt();hurtPlayer(dmg,d.nom)}
   else{log(`${d.nom} verfehlt dich.`,'dim');SFX.miss()}
 }
 function die(cause){if(!G.alive)return;G.alive=false;G.cause=cause;log('Lebenszeichen erloschen.','hurt');SFX.die();finish()}
@@ -720,11 +767,13 @@ function afterAction(){G.mons=G.mons.filter(m=>m.hp>0);computeVis();checkClear()
 
 function melee(m){
   if(G.p.act<=0){log('Deine Aktion ist schon verbraucht.','dim');updateUI();return}
-  const d=MON[m.t];useAction();
-  if(rnd()<.9){const dmg=Math.max(1,atk()+ri(-1,1)-d.def);log(`Du triffst ${d.acc}: ${dmg} Schaden.`);SFX.hit();hitMon(m,dmg)}
+  const d=MON[m.t],amb=ambush();useAction();
+  if(rnd()<.9){const dmg=Math.max(1,atk()+ri(-1,1)-d.def)*amb;log(`Du triffst ${d.acc}: ${dmg} Schaden.`);SFX.hit();hitMon(m,dmg)}
   else{log(`Du verfehlst ${d.acc}.`,'dim');SFX.miss();m.aware=true;m.known={x:G.p.x,y:G.p.y}}
   afterAction();
 }
+/* Hinterhalt der Späherin: doppelter Schaden, solange das Tarnfeld beim Angriff noch steht. */
+const ambush=()=>G.cls==='scout'&&unl(2)&&G.p.invis>0?2:1;
 const canShoot=()=>G.p.ammo>0||!!CLS[G.cls].side;
 const shootable=m=>m.hp>0&&VIS[m.x+m.y*RW]&&cheb(m,G.p)<=7;
 function shootTargets(){return G.mons.filter(shootable).sort((a,b)=>cheb(a,G.p)-cheb(b,G.p))}
@@ -732,10 +781,10 @@ function shootAt(m){
   const p=G.p;if(p.act<=0){log('Deine Aktion ist schon verbraucht.','dim');updateUI();return}
   if(!canShoot()){log('Keine Munition. Energiezellen laden den Blaster.','warn');updateUI();return}
   /* Ohne Munition greift die Späherin zur Nadelpistole: unbegrenzt, aber nur halb so stark. */
-  const side=p.ammo<=0;useAction();if(!side)p.ammo--;G.target=null;
+  const side=p.ammo<=0,weak=side&&!unl(0),amb=ambush();useAction();if(!side)p.ammo--;G.target=null;
   fx.push({type:'line',a:{x:p.x,y:p.y},b:{x:m.x,y:m.y},col:side?'#9aa6b2':'#5fd3e6',t0:performance.now(),dur:180});SFX.shoot();
   const d=MON[m.t];
-  if(rnd()<.85){const dmg=Math.max(1,(side?2:4+Math.floor(p.lvl/2))+ri(0,side?1:2)-Math.floor(d.def/2));log(`${side?CLS[G.cls].side:'Blaster'} trifft ${d.acc}: ${dmg} Schaden.`);hitMon(m,dmg)}
+  if(rnd()<.85){const dmg=Math.max(1,(weak?2:4+Math.floor(p.lvl/2))+ri(0,weak?1:2)-Math.floor(d.def/2))*amb;log(`${side?CLS[G.cls].side:'Blaster'} trifft ${d.acc}: ${dmg} Schaden.`);hitMon(m,dmg)}
   else{log(`Der Schuss verfehlt ${d.acc}.`,'dim');m.aware=true;m.known={x:p.x,y:p.y}}
   afterAction();
 }
@@ -766,11 +815,20 @@ function ability(){
     if(!vis.length){log('Kein Gegner in Sicht.','dim');updateUI();return}
     useAction();log('EMP-Impuls! Alles in Sicht erstarrt.','info');SFX.emp();
     fx.push({type:'ring',x:p.x,y:p.y,t0:performance.now(),dur:450});
-    vis.forEach(m=>{const d=MON[m.t];m.stun=Math.max(m.stun,d.boss?1:2);if(d.robot)hitMon(m,6)});
+    vis.forEach(m=>{const d=MON[m.t];m.stun=Math.max(m.stun,d.boss?1:unl(1)?3:2);if(d.robot)hitMon(m,6)});
   }else{
-    p.act=0;p.invis=2;G.mons.forEach(m=>{m.known=null});log('Tarnfeld aktiv. Die Gegner verlieren deine Spur.','info');SFX.emp();
+    p.act=0;p.invis=unl(1)?3:2;G.mons.forEach(m=>{m.known=null});log('Tarnfeld aktiv. Die Gegner verlieren deine Spur.','info');SFX.emp();
   }
-  p.cd=c.cd+1;afterAction();
+  p.cd=abCd()+1;afterAction();
+}
+function ability2(){
+  if(!canInput())return;const p=G.p,a=AB2[G.cls];
+  if(!a||!unl(2))return;
+  if(!inCombat()){log('Fähigkeiten nur im Kampf.','dim');updateUI();return}
+  if(p.cd2>0){log(`${a.n} lädt noch ${p.cd2} Runde${p.cd2>1?'n':''}.`,'dim');updateUI();return}
+  if(p.act<=0){log('Deine Aktion ist schon verbraucht.','dim');updateUI();return}
+  if(G.cls==='marine'){G.target={kind:'nade',ab:1};log('Splittergranate: klicke auf ein Zielfeld (bis 5 Felder, freie Sicht). Esc bricht ab.','dim');updateUI();return}
+  useAction();p.shield=2;p.cd2=a.cd+1;log('Schildgenerator aktiv. Gegner richten 2 Runden keinen Schaden an.','info');SFX.emp();afterAction();
 }
 
 /* ---------- Items ---------- */
@@ -829,9 +887,10 @@ function pickupHere(){
   pickup();updateUI();
 }
 function throwNade(tx,ty){
-  const p=G.p,slot=G.target.slot;G.target=null;
-  if(p.inv[slot]!=='nade'){updateUI();return}
-  p.inv.splice(slot,1);useAction();
+  const p=G.p,{slot,ab}=G.target;G.target=null;
+  if(ab)p.cd2=AB2.marine.cd+1;
+  else{if(p.inv[slot]!=='nade'){updateUI();return}p.inv.splice(slot,1)}
+  useAction();
   fx.push({type:'line',a:{x:p.x,y:p.y},b:{x:tx,y:ty},col:'#8bdc5f',t0:performance.now(),dur:200});
   fx.push({type:'boom',x:tx,y:ty,t0:performance.now(),dur:400});SFX.boom();log('Splittergranate!','info');
   G.mons.filter(m=>m.hp>0&&Math.abs(m.x-tx)<=1&&Math.abs(m.y-ty)<=1).forEach(m=>{const dmg=Math.max(1,8-Math.floor(MON[m.t].def/2));log(`${mName(m)} nimmt ${dmg} Schaden.`);hitMon(m,dmg)});
@@ -978,6 +1037,11 @@ async function monTurn(m){
 const SKEY='wrack-ikarus-bestenliste-v2';let memScores=[];
 function loadScores(){try{const v=JSON.parse(localStorage.getItem(SKEY)||'null');if(Array.isArray(v))return v}catch(e){}return memScores.slice()}
 function saveScore(e){const a=loadScores();a.push(e);a.sort((x,y)=>y.score-x.score);const top=a.slice(0,10);memScores=top;try{localStorage.setItem(SKEY,JSON.stringify(top))}catch(err){}return top}
+const LKEY='wrack-ikarus-lp';let memLP={};
+function loadLP(){try{const v=JSON.parse(localStorage.getItem(LKEY)||'null');if(v&&typeof v==='object')return v}catch(e){}return{...memLP}}
+function addLP(cls,x){const a=loadLP();a[cls]=(a[cls]||0)+x;memLP=a;try{localStorage.setItem(LKEY,JSON.stringify(a))}catch(e){}return a[cls]}
+const lp=cls=>loadLP()[cls]||0;
+const unl=i=>lp(G.cls)>=UNL[i];
 let lastEntry=null;
 // Laufender Run überlebt Neuladen; beendete Runs werden entfernt
 const RKEY='wrack-ikarus-run';
@@ -1051,15 +1115,19 @@ function showScreen(s){
   screen=s;
   $('scrTitle').hidden=s!=='title';$('scrGame').hidden=s!=='game';$('scrEnd').hidden=s!=='end';
   $('quitBtn').hidden=s!=='game';$('quitBtn').textContent='Run abbrechen';$('quitBtn').classList.remove('warn');
-  if(s==='title'){renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent='Bergungseinsatz · Station IKARUS-7'}
+  if(s==='title'){renderClasses();renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent='Bergungseinsatz · Station IKARUS-7'}
   if(s==='game')fit();
   if(s==='end'){renderEnd();$('topInfo').textContent='Einsatzbericht';window.scrollTo(0,0)}
+}
+function lpLine(k){
+  const l=lp(k),nx=UNL.findIndex(t=>l<t);
+  return`<span class="lp">LP ${l} · ${nx<0?'alles freigeschaltet':`bei ${UNL[nx]} LP: ${UNLD[k][nx]}`}${UNLD[k].filter((_,i)=>l>=UNL[i]).map(t=>`<br>✓ ${t}`).join('')}</span>`;
 }
 function renderClasses(){
   const box=$('classes');box.innerHTML='';
   Object.entries(CLS).forEach(([k,c])=>{
     const b=document.createElement('button');b.className='cls';b.setAttribute('aria-pressed',k===sel?'true':'false');
-    b.innerHTML=`<img alt="" src="${iconURL(playerSpr(k),'cls_'+k,40)}"><span class="nm">${c.n}</span><span class="st">TP ${c.hp} · Angriff ${c.atk} · Panzerung ${c.def} · Bewegung ${c.mp}</span><span class="ab"><b>${c.ab}</b> ${c.abd}</span><span class="gear">${c.gear}</span>`;
+    b.innerHTML=`<img alt="" src="${iconURL(playerSpr(k),'cls_'+k,40)}"><span class="nm">${c.n}</span><span class="st">TP ${c.hp} · Angriff ${c.atk} · Panzerung ${c.def} · Bewegung ${c.mp}</span><span class="ab"><b>${c.ab}</b> ${c.abd}</span><span class="gear">${c.gear}</span>${lpLine(k)}`;
     b.onclick=()=>{sel=k;renderClasses()};box.append(b);
   });
 }
@@ -1103,7 +1171,7 @@ function updateUI(){
   $('roomPips').innerHTML=Array.from({length:ROOMS},(_,i)=>{const n=i+1;let k=n<G.room||(n===G.room&&G.phase==='explore')?'on':n===G.room?'now':'';if(n===ROOMS)k='boss'+(n===G.room?' now':'');return`<span class="${k}"></span>`}).join('');
   const st=[['Angriff',atk()+(p.stim>0?' (Stim)':'')],['Panzerung',def()],['Stufe',`${p.lvl} · EP ${p.xp}/${need(p.lvl)}`],['Abschüsse',G.kills],['Runden gesamt',G.rounds],['Punkte',score().toLocaleString('de-DE')]];
   $('stats').innerHTML=st.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
-  const chips=[];if(p.stim>0)chips.push(`<span class="chip a">Stimulans ${p.stim}</span>`);if(p.invis>0)chips.push(`<span class="chip">Getarnt</span>`);
+  const chips=[];if(p.stim>0)chips.push(`<span class="chip a">Stimulans ${p.stim}</span>`);if(p.invis>0)chips.push(`<span class="chip">Getarnt</span>`);if(p.shield>0)chips.push(`<span class="chip">Schild ${p.shield}</span>`);
   $('chips').innerHTML=chips.join('');
   $('equip').innerHTML=`<dt>Waffe</dt><dd>${p.wpn?`${IT[p.wpn].n} (+${IT[p.wpn].v})`:'Fäuste'}</dd><dt>Schutz</dt><dd>${p.arm?`${IT[p.arm].n} (+${IT[p.arm].v})`:'Overall'}</dd><dt>Blaster</dt><dd>${p.ammo} Schuss</dd>${CLS[G.cls].side?`<dt>Reserve</dt><dd>${CLS[G.cls].side}</dd>`:''}`;
   const inv=$('inv');inv.innerHTML='';
@@ -1124,6 +1192,14 @@ function updateUI(){
   const ab=$('abBtn');$('abName').textContent=c.ab;
   $('abSub').textContent=G.phase!=='player'?'nur im Kampf':p.cd>0?`lädt ${p.cd} Rd. · R`:p.act>0?'bereit · R':'Aktion verbraucht';
   ab.classList.toggle('ready',G.phase==='player'&&p.cd===0&&p.act>0);ab.disabled=!(G.phase==='player'&&!busy);
+  const a2=AB2[G.cls],b2=$('ab2Btn');b2.hidden=!(a2&&unl(2));
+  if(!b2.hidden){$('ab2Name').textContent=a2.n;$('ab2Sub').textContent=G.phase!=='player'?'nur im Kampf':p.cd2>0?`lädt ${p.cd2} Rd. · T`:p.act>0?'bereit · T':'Aktion verbraucht';
+    b2.classList.toggle('ready',G.phase==='player'&&!(p.cd2>0)&&p.act>0);b2.disabled=!(G.phase==='player'&&!busy)}
+  const lu=$('lvlUp'),lk=G.offer&&G.alive?`${p.lvl}|${G.picks}|${G.offer}`:'';lu.hidden=!lk;
+  if(lk&&lu.dataset.k!==lk){lu.dataset.k=lk;
+    lu.innerHTML=`<p class="lbl">Stufe ${p.lvl} · wähle ein Upgrade</p>`+G.offer.map((k,i)=>`<button class="card" data-i="${i}"><span class="kbd">${i+1}</span><b>${PERKS[k].n}</b><span>${PERKS[k].d}</span></button>`).join('');
+    lu.querySelectorAll('.card').forEach(b=>b.onclick=()=>takePerk(+b.dataset.i))}
+  if(!lk)lu.dataset.k='';
   const fb=$('fireBtn');fb.disabled=!(G.phase==='player'&&!busy);fb.classList.toggle('aim',!!G.target);
   $('fireName').textContent=G.target?'Abbrechen':'Schießen';$('fireSub').textContent=G.target?'Esc':`${p.ammo<=0&&CLS[G.cls].side?CLS[G.cls].side:p.ammo+' Schuss'} · F`;
   $('log').innerHTML=G.log.slice(0,9).map(l=>`<p class="${l.k}">${l.t}</p>`).join('');
@@ -1237,6 +1313,7 @@ document.addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   if(screen==='title'&&e.key==='Enter'){e.preventDefault();startFromTitle();return}
   if(screen!=='game')return;
+  if(G&&G.offer){const m=/^Digit([1-3])$/.exec(e.code);if(m){e.preventDefault();takePerk(+m[1]-1)}return}
   if(e.code==='Escape'){if(G&&G.target){G.target=null;log('Zielen abgebrochen.','dim');updateUI()}return}
   if(e.code==='Space'||e.code==='Enter'||e.code==='NumpadEnter'||e.code==='Numpad5'){
     if(e.code!=='Space'&&e.code!=='Numpad5'&&e.target&&e.target.tagName==='BUTTON')return;
@@ -1246,6 +1323,7 @@ document.addEventListener('keydown',e=>{
   if(d){e.preventDefault();stepPlayer(d[0],d[1]);return}
   if(e.code==='KeyF'){e.preventDefault();fireButton(true);return}
   if(e.code==='KeyR'){e.preventDefault();ability();return}
+  if(e.code==='KeyT'){e.preventDefault();ability2();return}
   if(e.code==='KeyG'){e.preventDefault();pickupHere();return}
   const m=/^Digit([1-6])$/.exec(e.code);if(m){e.preventDefault();if(e.shiftKey)dropItem(+m[1]-1);else useItem(+m[1]-1)}
 });
@@ -1255,7 +1333,7 @@ cv.addEventListener('pointerdown',e=>{if(!canInput())return;const t=tileFrom(e);
 cv.addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const t=tileFrom(e);hover=(t.x>=0&&t.y>=0&&t.x<RW&&t.y<RH)?t:null});
 cv.addEventListener('pointerleave',()=>{hover=null});
 $('endBtn').onclick=()=>{if(canInput()&&inCombat())endTurn()};
-$('fireBtn').onclick=()=>fireButton(false);$('abBtn').onclick=ability;
+$('fireBtn').onclick=()=>fireButton(false);$('abBtn').onclick=ability;$('ab2Btn').onclick=ability2;
 $('sndBtn').onclick=()=>{soundOn=!soundOn;audio();$('sndBtn').textContent='Ton: '+(soundOn?'an':'aus');$('sndBtn').setAttribute('aria-pressed',soundOn);try{localStorage.setItem('wrack-ikarus-ton',soundOn?'1':'0')}catch(e){}};
 let quitArmed=null;
 $('quitBtn').onclick=()=>{const b=$('quitBtn');
