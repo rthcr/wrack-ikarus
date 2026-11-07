@@ -99,9 +99,9 @@ boot();
 document.addEventListener('pointerdown',unlock,{capture:true});
 document.addEventListener('keydown',unlock,{capture:true});
 // Im Hintergrund-Tab schweigen
-document.addEventListener('visibilitychange',()=>{if(document.hidden)E.suspend();else E.resume()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)E.fadeOutAndSuspend(.45,()=>document.hidden);else E.resumeAndFadeIn(.7)});
 
 // Für Tests
-window.__wrackAudio={playing:E.playingMusic,target,state:E.state};
+window.__wrackAudio={playing:E.playingMusic,target,state:E.state,master:E.masterLevel};
 
 export {unlock,play,setSound,isSoundOn,setMusic,isMusicOn,setVolume,getVolume,audioState};

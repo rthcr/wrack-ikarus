@@ -29,6 +29,23 @@ export const sfxOut=()=>sfxBus;
 export function resume(){if(ctx&&ctx.state==='suspended')ctx.resume().catch(()=>{})}
 export function suspend(){if(ctx&&ctx.state==='running')ctx.suspend().catch(()=>{})}
 
+/* Weich aus- und einblenden statt hart anhalten (sonst knackt es, wenn das Signal mitten in der Schwingung abreißt).
+   Ausblenden: Gesamtlautstärke in sec auf 0, danach anhalten – aber nur, wenn stillSuspend() dann noch true ist. */
+let suspendTimer=null;
+export function fadeOutAndSuspend(sec=.45,stillSuspend=()=>true){
+  if(!ctx)return;clearTimeout(suspendTimer);
+  if(ctx.state!=='running')return;
+  ramp(master.gain,0,sec);
+  suspendTimer=setTimeout(()=>{if(stillSuspend())suspend()},sec*1000+120);
+}
+export function resumeAndFadeIn(sec=.7){
+  if(!ctx)return;clearTimeout(suspendTimer);
+  const go=()=>ramp(master.gain,1,sec);
+  if(ctx.state==='suspended'){master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setValueAtTime(0,ctx.currentTime);ctx.resume().then(go).catch(()=>{})}
+  else go();
+}
+export const masterLevel=()=>master?master.gain.value:0;
+
 export async function loadManifest(){
   if(manifest)return manifest;
   try{const r=await fetch(BASE+'manifest.json');manifest=r.ok?await r.json():null}catch(e){manifest=null}
