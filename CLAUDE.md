@@ -62,6 +62,8 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - Grafik: Kacheln sind 16×16 (`TS`), die Welt 272×208 Pixel, Phaser skaliert mit `pixelArt: true`.
   Neue Figuren in `art.js`: genau 16 Zeilen à 16 Zeichen, nur Farbzeichen aus `PAL` (plus h/H bzw. x/X zum Umfärben).
   Kein Bloom/Weichzeichner über die ganze Kamera, das macht die Pixel matschig; Leuchten läuft über die additiven Lichtkreise.
+- Schriften: Pixelschrift Silkscreen (`--f-display`) für Überschriften und Bedienelemente, IBM Plex Mono für Text;
+  der Schriftzug „Wrack Ikarus“ (Titel, Logo, og.png) nutzt `--f-title` = Big Shoulders Stencil, selbst gehostet in `public/fonts/`.
 - Licht: `AMBIENT` in GameScene.js ist die Grunddunkelheit. Lichtquellen sind Objekte `{x,y,r,col,i}`.
   Der Schalter „Bildfilter“ (localStorage `wrack-ikarus-filter`) steuert kräftiges Leuchten und die Scanlines (`.stage.crt`).
 - Ton: Effekt-Namen sind die `SFX.*`-Aufrufe in game.js (z. B. `shoot`, `hit`, `boom`). Neuer Effekt = Funktion in

@@ -1,3 +1,6 @@
+/* Schriftzug: Big Shoulders Stencil Display (SIL Open Font License, siehe public/fonts/OFL-big-shoulders.txt) */
+@font-face{font-family:'Big Shoulders Stencil';font-weight:800;font-style:normal;font-display:swap;
+  src:url('/fonts/big-shoulders-stencil-800.woff2') format('woff2')}
 /* Grundlage */
 :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;font:14px/1.5 system-ui,sans-serif}
@@ -17,6 +20,7 @@ img{max-width:100%}
   --red:#ff5a45;
   --green:#8bdc5f;
   --f-display:'Silkscreen','Courier New',monospace;
+  --f-title:'Big Shoulders Stencil','Arial Narrow','Helvetica Neue',sans-serif;   /* nur der Schriftzug Wrack Ikarus */
   --f-body:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
   color-scheme:dark;
 }
@@ -37,7 +41,7 @@ p{margin:0}
 
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:10px}
 .brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
-.logo{font-family:var(--f-display);font-weight:700;color:var(--amber);letter-spacing:.06em;font-size:15px}
+.logo{font-family:var(--f-title);font-weight:800;color:var(--amber);letter-spacing:.1em;font-size:21px;line-height:1}
 .sub{color:var(--dim);font-size:12px;letter-spacing:.04em}
 .topbtns{display:flex;gap:8px;flex-wrap:wrap}
 .ghost{background:transparent;border:1px solid var(--line);color:var(--dim);padding:5px 10px;font-size:12px;border-radius:2px}
@@ -47,7 +51,7 @@ p{margin:0}
 /* Titel */
 .hero{display:grid;gap:14px;padding-block:8px 4px}
 .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
-.hero h1{font-family:var(--f-display);font-weight:700;color:var(--amber);font-size:clamp(48px,11vw,112px);line-height:.88;letter-spacing:.01em;text-transform:uppercase}
+.hero h1{font-family:var(--f-title);font-weight:800;color:var(--amber);font-size:clamp(60px,13vw,136px);line-height:.9;letter-spacing:.035em;text-transform:uppercase}
 .stripes{height:10px;max-width:420px;background:repeating-linear-gradient(-45deg,var(--amber) 0 8px,transparent 8px 16px);opacity:.9}
 .lede{max-width:62ch;font-size:15px}
 .rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:900px}
