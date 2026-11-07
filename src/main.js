@@ -13,6 +13,7 @@ import './audio/sfx.js';
 import './ui/hud.js';
 import {showScreen,renderClasses} from './ui/screens.js';
 import './ui/input.js';
+import './ui/settings.js';
 
 const $=id=>document.getElementById(id);
 
@@ -45,7 +46,7 @@ let filterOn=loadFilter();
 game.registry.set('filter',filterOn);
 function applyFilter(){
   $('stage').classList.toggle('crt',filterOn);
-  $('fxBtn').textContent='Bildfilter: '+(filterOn?'an':'aus');$('fxBtn').setAttribute('aria-pressed',filterOn);
+  $('fxBtn').textContent=filterOn?'an':'aus';$('fxBtn').setAttribute('aria-pressed',filterOn);$('fxBtn').classList.toggle('on',filterOn);
   game.registry.set('filter',filterOn);emit('filter',filterOn);
 }
 $('fxBtn').onclick=()=>{filterOn=!filterOn;storeFilter(filterOn);applyFilter()};

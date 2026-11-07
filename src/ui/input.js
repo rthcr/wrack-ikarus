@@ -1,7 +1,7 @@
 // Eingabe über Tastatur, Steuerkreuz und Knöpfe. Klicks aufs Spielfeld verarbeitet die Phaser-Szene.
 import {S,startRun,endTurn,stepPlayer,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,cancelTarget,quitRun,setSel,canInput,inCombat} from '../core/game.js';
 import {normSeed,randomSeed} from '../core/rng.js';
-import {unlock,setSound,isSoundOn,setMusic,isMusicOn} from '../audio/sfx.js';
+import {unlock} from '../audio/sfx.js';
 import {showScreen,renderClasses,drawPreview,sendScore} from './screens.js';
 
 const $=id=>document.getElementById(id);
@@ -9,6 +9,7 @@ const $=id=>document.getElementById(id);
 const CODEMAP={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],KeyW:[0,-1],KeyS:[0,1],KeyA:[-1,0],KeyD:[1,0],KeyQ:[-1,-1],KeyE:[1,-1],KeyZ:[-1,1],KeyC:[1,1],
  Numpad8:[0,-1],Numpad2:[0,1],Numpad4:[-1,0],Numpad6:[1,0],Numpad7:[-1,-1],Numpad9:[1,-1],Numpad1:[-1,1],Numpad3:[1,1]};
 document.addEventListener('keydown',e=>{
+  if(document.querySelector('dialog[open]'))return;   // Einstellungen offen: Spieltasten ruhen
   const screen=S.screen,G=S.G;
   if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'){if(e.target.id==='nameIn'){e.preventDefault();sendScore()}else if(screen==='title'){e.preventDefault();startFromTitle()}}return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
@@ -31,12 +32,6 @@ document.addEventListener('keydown',e=>{
 document.querySelectorAll('.pad button').forEach(b=>b.addEventListener('click',()=>{const[dx,dy]=b.dataset.d.split(',').map(Number);stepPlayer(dx,dy)}));
 $('endBtn').onclick=()=>{if(canInput()&&inCombat())endTurn()};
 $('fireBtn').onclick=()=>fireButton(false);$('abBtn').onclick=ability;$('ab2Btn').onclick=ability2;
-function soundLabel(){const on=isSoundOn();$('sndBtn').textContent='Ton: '+(on?'an':'aus');$('sndBtn').setAttribute('aria-pressed',on)}
-soundLabel();
-$('sndBtn').onclick=()=>{setSound(!isSoundOn());soundLabel()};
-function musicLabel(){const on=isMusicOn();$('musBtn').textContent='Musik: '+(on?'an':'aus');$('musBtn').setAttribute('aria-pressed',on)}
-musicLabel();
-$('musBtn').onclick=()=>{setMusic(!isMusicOn());musicLabel()};
 let quitArmed=null;
 $('quitBtn').onclick=()=>{const b=$('quitBtn');
   if(!quitArmed){b.textContent='Wirklich abbrechen?';b.classList.add('warn');quitArmed=setTimeout(()=>{quitArmed=null;b.textContent='Run abbrechen';b.classList.remove('warn')},3000);return}

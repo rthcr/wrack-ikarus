@@ -323,7 +323,7 @@ async function walk(path,then){
     const x=i%RW,y=(i/RW)|0;
     const m=monAt(x,y);
     if(m){computeVis();log(`Hinterhalt! ${mName(m)} versperrt den Weg.`,'warn');m.gx=m.x;m.gy=m.y;then=null;break}
-    G.p.x=x;G.p.y=y;if(G.phase==='player')G.p.mp--;
+    G.p.x=x;G.p.y=y;if(G.phase==='player')G.p.mp--;SFX.step();
     pickup();computeVis();updateUI();await sleep(80);
   }
   busy=false;computeVis();updateUI();
@@ -342,7 +342,7 @@ function stepPlayer(dx,dy){
   if(G.phase==='explore'&&(t===EXIT||(t===POD&&G.bossDead))&&!(dx&&dy)){goThrough(nx,ny);return}
   if(!canStep(G.map,p.x,p.y,nx,ny))return;
   if(inCombat()&&p.mp<=0){log('Keine Bewegung mehr. Nutze deine Aktion oder beende den Zug.','dim');updateUI();return}
-  p.x=nx;p.y=ny;if(inCombat())p.mp--;
+  p.x=nx;p.y=ny;if(inCombat())p.mp--;SFX.step();
   pickup();computeVis();updateUI();autoEnd();
 }
 function tileClick(tx,ty){
@@ -443,7 +443,7 @@ async function monTurn(m){
     if(!best)break;
     const wasShown=shown();
     m.x=best[0];m.y=best[1];computeVis();
-    if(wasShown||shown()){updateUI();await sleep(130)}
+    if(wasShown||shown()){emit('sfx','move',m.t);updateUI();await sleep(130)}
     sees=canSee(m);if(sees)notice();
   }
   if(await attack())return;

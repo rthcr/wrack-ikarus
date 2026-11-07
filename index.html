@@ -21,9 +21,8 @@
       <span class="sub" id="topInfo">Bergungseinsatz · Station IKARUS-7</span>
     </div>
     <div class="topbtns">
-      <button id="fxBtn" class="ghost" aria-pressed="true">Bildfilter: an</button>
-      <button id="musBtn" class="ghost" aria-pressed="true">Musik: an</button>
-      <button id="sndBtn" class="ghost" aria-pressed="true">Ton: an</button>
+      <button id="audioUnlock" class="ghost unlock" hidden>Ton einschalten</button>
+      <button id="setBtn" class="ghost" aria-haspopup="dialog">Einstellungen</button>
       <button id="quitBtn" class="ghost" hidden>Run abbrechen</button>
     </div>
   </header>
@@ -167,6 +166,30 @@
     <ol class="hs" id="hsEnd"></ol>
   </section>
 </div>
+<dialog id="settings" class="settings" aria-labelledby="setTitle">
+  <form method="dialog" class="setform">
+    <h2 id="setTitle" class="lbl">Einstellungen</h2>
+    <div class="setrow">
+      <label for="musVol">Musik</label>
+      <input type="range" id="musVol" min="0" max="100" step="5">
+      <output id="musOut" for="musVol"></output>
+      <button type="button" id="musMute" class="mute" aria-pressed="false" aria-label="Musik stumm schalten">Stumm</button>
+    </div>
+    <div class="setrow">
+      <label for="sfxVol">Effekte</label>
+      <input type="range" id="sfxVol" min="0" max="100" step="5">
+      <output id="sfxOut" for="sfxVol"></output>
+      <button type="button" id="sfxMute" class="mute" aria-pressed="false" aria-label="Effekte stumm schalten">Stumm</button>
+    </div>
+    <div class="setrow filterrow">
+      <span class="setlbl">Bildfilter</span>
+      <span class="sethint">Leuchten und Monitorzeilen</span>
+      <button type="button" id="fxBtn" class="mute on" aria-pressed="true">an</button>
+    </div>
+    <p class="hint" id="audioHint"></p>
+    <div class="setfoot"><button id="setClose" class="btn" value="close">Schließen</button></div>
+  </form>
+</dialog>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

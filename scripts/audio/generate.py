@@ -261,12 +261,15 @@ def sfx_shoot():
 
 
 def sfx_hit():
-    n = int(.25 * SR)
-    f = 140 * np.exp(-np.arange(n) / (.04 * SR)) + 55
-    body = sine(f) * expdec(n, .07)
-    crack = filt(noise(n), 'band', (400, 3500)) * expdec(n, .025)
-    x = soft(1.1 * body + .9 * crack, 2)
-    return reverb(fade(x, 0, .03), size=.6, mix=.12, seed=2)
+    """Du triffst: kurzer, wuchtiger Aufprall, gedämpft, ohne Klingeln."""
+    n = int(.3 * SR)
+    f = 150 * np.exp(-np.arange(n) / (.035 * SR)) + 52
+    body = sine(f) * expdec(n, .06)
+    smack = filt(noise(n), 'low', 1800) * expdec(n, .018)
+    knock = filt(noise(n), 'band', (180, 600)) * expdec(n, .04)
+    x = soft(1.3 * body + .8 * smack + .6 * knock, 2.6)
+    x = filt(x, 'low', 3500)
+    return reverb(fade(x, 0, .04), size=.5, mix=.08, damp=2500, seed=2)
 
 
 def sfx_miss():
@@ -277,13 +280,16 @@ def sfx_miss():
 
 
 def sfx_hurt():
-    n = int(.42 * SR)
-    f = 95 * np.exp(-np.arange(n) / (.08 * SR)) + 42
-    thud = sine(f) * expdec(n, .1)
-    growl = filt(saw(70 + 8 * sine(31, n), n), 'low', 700) * expdec(n, .12)
-    clank = bell(820, .42, decay=.25, ratios=(1, 2.4, 3.9, 6.1), amps=(.6, .4, .3, .2))
-    x = soft(1.2 * thud + .5 * growl + .35 * clank, 2.2)
-    return reverb(fade(x, 0, .05), size=.7, mix=.15, seed=3)
+    """Du wirst getroffen: schwerer, dumpfer Schlag durch den Raumanzug, tiefes Nachgrollen, kein Klingeln."""
+    n = int(.55 * SR)
+    f = 90 * np.exp(-np.arange(n) / (.07 * SR)) + 34
+    thud = sine(f) * expdec(n, .12)
+    sub = sine(42, n) * env(n, a=.005, d=.25, s=0, r=.05)
+    crunch = filt(noise(n), 'band', (200, 1100)) * expdec(n, .035)
+    rumble = filt(noise(n), 'low', 160) * env(n, a=.02, d=.35, s=0, r=.1)
+    x = soft(1.4 * thud + .6 * sub + .7 * crunch + .9 * rumble, 3)
+    x = filt(x, 'low', 1600)
+    return reverb(fade(x, 0, .06), size=.6, mix=.1, damp=1800, seed=3)
 
 
 def sfx_zap():
@@ -396,10 +402,65 @@ def sfx_win():
     return reverb(fade(out, .02, .5), size=3.0, mix=.35, seed=14)
 
 
+def _boot(seed_shift, ring):
+    """Stiefel auf Metallplatten: dumpfer Absatz, kurzes Blech-Klappern."""
+    n = int(.2 * SR)
+    f = 110 * np.exp(-np.arange(n) / (.02 * SR)) + 60 + seed_shift
+    heel = sine(f) * expdec(n, .025)
+    scuff = filt(noise(n), 'band', (700, 3000)) * expdec(n, .012)
+    plate = filt(noise(n), 'band', (ring - 60, ring + 60)) * expdec(n, .05)
+    x = soft(1.1 * heel + .35 * scuff + .25 * plate, 2)
+    return reverb(fade(x, 0, .03), size=.5, mix=.12, damp=3000, seed=15)
+
+
+def sfx_step():
+    return _boot(0, 1250)
+
+
+def sfx_step2():
+    return _boot(8, 1050)
+
+
+def sfx_shuffle():
+    """Mutierter Techniker: schlurfender, weicher Schritt."""
+    n = int(.28 * SR)
+    drag = sweep(noise(n), 'low', np.linspace(1400, 500, n)) * env(n, a=.03, d=.2, s=0, r=.05)
+    thud = sine(80 * np.exp(-np.arange(n) / (.03 * SR)) + 50) * expdec(n, .04)
+    return reverb(fade(.6 * drag + .7 * thud, .005, .04), size=.6, mix=.15, seed=16)
+
+
+def sfx_servo():
+    """Drohne: kurzes Servo-Surren."""
+    n = int(.24 * SR)
+    f = 420 + 160 * np.sin(np.linspace(0, np.pi, n))
+    x = filt(saw(f) * (0.7 + 0.3 * square(90, n)), 'band', (250, 2600)) * env(n, a=.03, d=.1, s=.6, r=.08)
+    return reverb(fade(.6 * x, .005, .04), size=.5, mix=.12, seed=17)
+
+
+def sfx_stomp():
+    """Panzerläufer und Brutmutter: schwerer Tritt, der den Boden zittern lässt."""
+    n = int(.5 * SR)
+    f = 70 * np.exp(-np.arange(n) / (.05 * SR)) + 30
+    x = sine(f) * expdec(n, .12) + .5 * filt(noise(n), 'low', 400) * expdec(n, .07)
+    x += .2 * filt(noise(n), 'band', (900, 1400)) * expdec(n, .03)
+    return reverb(fade(soft(1.3 * x, 2.5), 0, .06), size=.9, mix=.18, damp=2000, seed=18)
+
+
+def sfx_skitter():
+    """Larve und Xeno-Jäger: schnelles Krabbeln mehrerer Beine."""
+    out = np.zeros((2, int(.26 * SR)))
+    for i in range(4):
+        m = int(.04 * SR)
+        click = filt(noise(m), 'band', (1800, 5200)) * expdec(m, .006)
+        place(out, pan(.7 * click, -.3 + .2 * i), i * .045 + rng.uniform(0, .01))
+    return reverb(fade(out, 0, .03), size=.4, mix=.12, seed=19)
+
+
 SFX = {
     'shoot': sfx_shoot, 'hit': sfx_hit, 'miss': sfx_miss, 'hurt': sfx_hurt, 'zap': sfx_zap,
     'spit': sfx_spit, 'pick': sfx_pick, 'kill': sfx_kill, 'drop': sfx_drop, 'lvl': sfx_lvl,
     'lift': sfx_lift, 'die': sfx_die, 'emp': sfx_emp, 'boom': sfx_boom, 'win': sfx_win,
+    'step': sfx_step, 'step2': sfx_step2, 'shuffle': sfx_shuffle, 'servo': sfx_servo, 'stomp': sfx_stomp, 'skitter': sfx_skitter,
 }
 
 

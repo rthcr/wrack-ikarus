@@ -24,7 +24,7 @@ Argumente: `$ARGUMENTS` (optional: Seed mit 3–10 Zeichen [A-Za-z0-9] und/oder 
 2. **Titelbildschirm** – `take_snapshot`: Seed-Feld, Klassenwahl und „Mission starten“ müssen vorhanden sein. Einmal „Würfeln“ (`#rollBtn`) klicken, die Seed-Vorschau muss sich ändern. Screenshot.
 3. **Run starten** – `#startBtn` klicken oder Enter drücken. Screenshot vom Spielfeld.
 4. **Spielen (ca. 15–25 Eingaben)** – mit `press_key` bewegen (WASD/QEZC, Pfeiltasten), `F` = Schießen (Ziel auf dem Spielfeld-Canvas `#cv` anklicken, `Escape` bricht ab), `R` = Fähigkeit, `1`–`6` = Gegenstand, `Space` = Zug beenden. Auch das Touch-Pad (`.pad button`) und `#endBtn` mindestens einmal per `click` verwenden. Nach jeder Handvoll Züge Konsole prüfen und den Spielzustand per `evaluate_script` lesen, wenn möglich (z. B. Text der Statuskonsole oder des Logs).
-5. **Speicherstand** – `evaluate_script`: `Object.keys(localStorage)` und den Inhalt der Schlüssel ausgeben (`wrack-ikarus-bestenliste-v2`, `wrack-ikarus-ton`, `wrack-ikarus-lp`, `wrack-ikarus-run-v3`). `#sndBtn` umschalten, Seite neu laden (`navigate_page` reload) und prüfen, ob die Ton-Einstellung erhalten bleibt und der laufende Run mit gleicher Runde, Position und TP fortgesetzt wird.
+5. **Speicherstand** – `evaluate_script`: `Object.keys(localStorage)` und den Inhalt der Schlüssel ausgeben (`wrack-ikarus-bestenliste-v2`, `wrack-ikarus-ton`, `wrack-ikarus-lp`, `wrack-ikarus-run-v3`). Über `#setBtn` das Menü öffnen, Musik-Regler verstellen und Effekte stumm schalten (`#sfxMute`), Seite neu laden (`navigate_page` reload) und prüfen, ob die Einstellungen erhalten bleiben (`wrack-ikarus-lautstaerke`, `wrack-ikarus-ton`, `wrack-ikarus-musik`) und der laufende Run mit gleicher Runde, Position und TP fortgesetzt wird.
 6. **Run-Ende** – `#quitBtn` zweimal klicken (Bestätigung). Nach ca. 1,2 s erscheint der Ergebnisbildschirm „Abgebrochen in Raum N“ mit Share-Text; ein Abbruch darf **keinen** Bestenlisten-Eintrag erzeugen, das Namensfeld (`#submitBox`) ist ausgeblendet und `wrack-ikarus-run-v3` ist gelöscht. Danach „Gleicher Seed, neuer Versuch“ (`#againBtn`) prüfen.
 7. **Mobil** – `emulate` bzw. `resize_page` auf ca. 390×844. Das Layout muss gestapelt sein, nichts darf horizontal überlaufen (`document.documentElement.scrollWidth <= innerWidth`) und das Touch-Pad muss bedienbar sein. Screenshot.
 8. **Aufräumen** – Testseite schließen (`close_page`).
@@ -37,6 +37,7 @@ Lokal mit `npm run preview` gibt es weder die Vercel-Analytics noch die API der 
 
 - `Failed to load resource: the server responded with a status of 404` für `/_vercel/insights/script.js`
 - `404` für `/api/scores`
+- Warnung `The AudioContext was not allowed to start …`: Chrome sperrt Ton bis zum ersten Klick, das Spiel zeigt dann den Knopf „Ton einschalten“
 
 Die gemeinsame Bestenliste (`#gsTitle`, `#gsEnd`) zeigt dann „Die gemeinsame Bestenliste ist hier gerade nicht erreichbar.“, auch das ist korrekt. Das Eintragen eines Namens lässt sich lokal nicht testen. Alle anderen Fehler und Warnungen melden.
 

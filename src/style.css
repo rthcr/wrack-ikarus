@@ -248,3 +248,26 @@ p{margin:0}
   background:repeating-linear-gradient(to bottom,rgba(0,0,0,.22) 0 1px,transparent 1px 3px);
   box-shadow:inset 0 0 40px rgba(0,0,0,.55)}
 @media (prefers-reduced-motion:reduce){.stage.crt::after{background:none}}
+
+/* Einstellungen */
+.unlock{border-color:var(--amber);color:var(--amber)}
+@media (prefers-reduced-motion:no-preference){.unlock{animation:pulse 1.6s ease-in-out infinite}}
+@keyframes pulse{50%{opacity:.55}}
+.settings{background:var(--panel);color:var(--text);border:1px solid var(--line);border-top:3px solid var(--amber);padding:0;
+  width:min(440px,calc(100vw - 32px));max-width:100%}
+.settings::backdrop{background:rgba(3,5,8,.72)}
+.setform{display:flex;flex-direction:column;gap:14px;padding:18px}
+.setrow{display:grid;grid-template-columns:5.5em minmax(0,1fr) 3.4em 5.2em;gap:10px;align-items:center}
+.setrow label,.setlbl{font-size:13px;color:var(--text)}
+.setrow output{font-size:12px;color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
+.setrow input[type=range]{width:100%;min-width:0;accent-color:var(--amber)}
+.setrow.is-muted input[type=range],.setrow.is-muted output{opacity:.4}
+.filterrow{grid-template-columns:5.5em minmax(0,1fr) 5.2em}
+.sethint{font-size:12px;color:var(--dim)}
+.mute{background:var(--panel2);border:1px solid var(--line);padding:6px 8px;font-size:12px;border-radius:2px;color:var(--text)}
+.mute:hover{border-color:var(--dim)}
+.mute.muted{border-color:var(--red);color:var(--red)}
+.mute.on{border-color:var(--cyan);color:var(--cyan)}
+.setfoot{display:flex;justify-content:flex-end}
+@media (max-width:420px){.setrow{grid-template-columns:4.6em minmax(0,1fr) 4.8em}.setrow output{display:none}
+  .filterrow{grid-template-columns:minmax(0,1fr) 4.8em}.sethint{display:none}}

@@ -11,10 +11,18 @@ export function init(){
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;
   try{ctx=new AC()}catch(e){return null}
   master=ctx.createGain();master.connect(ctx.destination);
-  sfxBus=ctx.createGain();sfxBus.gain.value=.9;sfxBus.connect(master);
-  musicBus=ctx.createGain();musicBus.gain.value=.8;musicBus.connect(master);
+  sfxBus=ctx.createGain();sfxBus.gain.value=0;sfxBus.connect(master);
+  musicBus=ctx.createGain();musicBus.gain.value=0;musicBus.connect(master);
   return ctx;
 }
+/* Lautstärken 0..1 (Regler); quadratisch, damit der Regler sich gleichmäßig anfühlt */
+const BASE_SFX=.9,BASE_MUSIC=.8;
+export function setLevels({sfx,music}){
+  if(!ctx)return;
+  ramp(sfxBus.gain,BASE_SFX*sfx*sfx,.08);ramp(musicBus.gain,BASE_MUSIC*music*music,.25);
+}
+export const state=()=>ctx?ctx.state:'none';
+export function onState(cb){if(ctx)ctx.addEventListener('statechange',()=>cb(ctx.state))}
 export const context=()=>ctx;
 export const sfxOut=()=>sfxBus;
 

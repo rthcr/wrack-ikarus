@@ -28,4 +28,8 @@ const MKEY='wrack-ikarus-musik';
 function loadMusic(){try{return localStorage.getItem(MKEY)!=='0'}catch(e){return true}}
 function storeMusic(on){try{localStorage.setItem(MKEY,on?'1':'0')}catch(e){}}
 
-export {loadMusic,storeMusic,loadFilter,storeFilter,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};
+const VKEY='wrack-ikarus-lautstaerke';
+function loadVolumes(){try{const v=JSON.parse(localStorage.getItem(VKEY)||'null');if(v&&typeof v==='object')return{sfx:+v.sfx||0,music:+v.music||0}}catch(e){}return{sfx:80,music:70}}
+function storeVolumes(v){try{localStorage.setItem(VKEY,JSON.stringify(v))}catch(e){}}
+
+export {loadVolumes,storeVolumes,loadMusic,storeMusic,loadFilter,storeFilter,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};
