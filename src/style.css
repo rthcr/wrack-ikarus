@@ -271,3 +271,15 @@ p{margin:0}
 .setfoot{display:flex;justify-content:flex-end}
 @media (max-width:420px){.setrow{grid-template-columns:4.6em minmax(0,1fr) 4.8em}.setrow output{display:none}
   .filterrow{grid-template-columns:minmax(0,1fr) 4.8em}.sethint{display:none}}
+
+/* Titelbild: Station im Orbit, Schriftzug darüber */
+.poster{position:relative;border:1px solid var(--line);background:#05070b;overflow:hidden}
+#titleArt{display:block;width:100%;height:auto;max-width:100%;image-rendering:pixelated;image-rendering:crisp-edges}
+.poster-text{position:absolute;left:clamp(14px,3vw,32px);bottom:clamp(10px,2.5vw,26px);display:grid;gap:8px;max-width:60%}
+.poster-text h1{text-shadow:0 2px 0 #05070b,0 0 24px rgba(5,7,11,.9)}
+.poster-text .eyebrow{text-shadow:0 1px 0 #05070b}
+@media (max-width:620px){
+  .poster-text{position:static;max-width:none;padding:14px 14px 16px;background:linear-gradient(#05070b,#0a0d12)}
+}
+.poster-text .eyebrow{max-width:30ch}
+@media (max-width:620px){.poster-text .eyebrow{max-width:none}}

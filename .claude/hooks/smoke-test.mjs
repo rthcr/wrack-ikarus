@@ -88,7 +88,7 @@ try {
   const pending = new Map();
   const send = (method, params = {}) => new Promise((res, rej) => {
     const n = ++id;
-    const timer = setTimeout(() => { pending.delete(n); rej(new Error(`${method} hat nicht geantwortet`)); }, 5000);
+    const timer = setTimeout(() => { pending.delete(n); rej(new Error(`${method} hat nicht geantwortet`)); }, 12000);
     pending.set(n, r => { clearTimeout(timer); res(r); });
     ws.send(JSON.stringify({ id: n, method, params }));
   });

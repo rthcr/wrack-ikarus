@@ -14,6 +14,7 @@ import './ui/hud.js';
 import {showScreen,renderClasses} from './ui/screens.js';
 import './ui/input.js';
 import './ui/settings.js';
+import './ui/titleArt.js';
 
 const $=id=>document.getElementById(id);
 

@@ -4,6 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Wrack Ikarus – ein Sci-Fi-Roguelike im Browser.">
+<meta name="theme-color" content="#0a0d12">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon-48.png" sizes="48x48" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Wrack Ikarus">
+<meta property="og:title" content="Wrack Ikarus">
+<meta property="og:description" content="Rundenbasiertes Sci-Fi-Roguelike im Browser: Acht Räume voller Kreaturen zwischen dir und der letzten Rettungskapsel. Wer stirbt, fängt von vorn an.">
+<meta property="og:url" content="https://wrack-ikarus.vercel.app/">
+<meta property="og:image" content="https://wrack-ikarus.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Die zerstörte Raumstation IKARUS-7 vor dem Planeten Kepler-442b, daneben der Schriftzug Wrack Ikarus">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary_large_image">
 <script>
   window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
 </script>
@@ -29,8 +45,13 @@
 
   <section id="scrTitle" class="wrap" style="gap:18px">
     <div class="hero">
-      <p class="eyebrow">Notruf IKARUS-7 · Orbit Kepler-442b · Funkstille seit 41 Tagen</p>
-      <h1>Wrack<br>Ikarus</h1>
+      <div class="poster">
+        <canvas id="titleArt" width="400" height="150" aria-hidden="true"></canvas>
+        <div class="poster-text">
+          <p class="eyebrow">Notruf IKARUS-7 · Orbit Kepler-442b · Funkstille seit 41 Tagen</p>
+          <h1>Wrack<br>Ikarus</h1>
+        </div>
+      </div>
       <div class="stripes" aria-hidden="true"></div>
       <p class="lede">Die Forschungsstation antwortet nicht mehr. Zwischen dir und der letzten Rettungskapsel liegen acht Räume voller Kreaturen und durchgedrehter Maschinen, dahinter die Brutkammer. Wer stirbt, fängt von vorn an.</p>
       <div class="rules">

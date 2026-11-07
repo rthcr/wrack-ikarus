@@ -11,6 +11,8 @@ Live auf Vercel, Code auf GitHub (`rthcr/wrack-ikarus`). Sprache in Code-Komment
 - `npm run preview` – den Build lokal ansehen
 - `npm run check` – Test-Bot spielt 9 Runs direkt gegen die Spiellogik und meldet Abstürze oder hängende Runs
 - `python3 scripts/audio/generate.py [name …]` – Soundeffekte und Musik neu erzeugen (braucht numpy, scipy, ffmpeg); ohne Namen alles
+- `python3 scripts/icons/make-icons.py` – Favicon (Helm) und Apple-Touch-Icon neu erzeugen (braucht Pillow)
+- `node scripts/og/make-og.mjs` – Vorschaubild für geteilte Links `public/og.png` aus der Titelszene (braucht Playwright)
 
 ## Aufbau
 
@@ -32,12 +34,15 @@ src/render/           Darstellung
   art.js              Pixel-Art 16×16 als Zeichenketten (Figuren, Gegner, Items), Palette PAL
   sprites.js          malt art.js auf Canvas, erzeugt die 2. Animationsphase (Atmen/Schweben/Blinken), TS = 16
   tiles.js            Kacheln in 16×16 (Böden je Deck, Wände, Kisten, Konsolen, Türen, Kapsel) und ihre Lichtquellen
+  titleScene.js       Titelbild „Station im Orbit“ (eigenständig, ohne Importe; auch für og.png genutzt)
 src/ui/               DOM-Oberfläche: hud.js (Statuskonsole), screens.js (Titel/Ende/Bestenlisten), input.js (Tastatur, Knöpfe),
-                      settings.js (Menü Einstellungen: Lautstärke/Stumm Musik und Effekte, Bildfilter; Knopf „Ton einschalten“)
+                      settings.js (Menü Einstellungen: Lautstärke/Stumm Musik und Effekte, Bildfilter; Knopf „Ton einschalten“),
+                      titleArt.js (animiert das Titelbild, nur solange der Startbildschirm sichtbar ist)
 src/audio/engine.js   Web-Audio: Dateien laden, Effekte abspielen, Musikspuren überblenden (nahtlose Loops)
 src/audio/sfx.js      Ton im Spiel: Effekte zu Ereignissen, Musik ab Startbildschirm je Deck + Kampfspur, Lautstärken
 public/assets/audio/  erzeugte MP3s und manifest.json (nicht von Hand bearbeiten, sondern neu erzeugen)
 scripts/audio/        generate.py: synthetischer Klang-Generator für alle Effekte und die Musik
+public/               favicon.svg, favicon-32/48.png, apple-touch-icon.png, og.png (erzeugt, siehe Befehle)
 public/classic/       Die erste Fassung des Spiels als einzelne HTML-Datei, erreichbar unter /classic/. NICHT ändern.
 api/scores.js         Vercel-Funktion für die gemeinsame Bestenliste (Upstash Redis)
 scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
