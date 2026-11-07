@@ -24,4 +24,8 @@ const FKEY='wrack-ikarus-filter';
 function loadFilter(){try{return localStorage.getItem(FKEY)!=='0'}catch(e){return true}}
 function storeFilter(on){try{localStorage.setItem(FKEY,on?'1':'0')}catch(e){}}
 
-export {loadFilter,storeFilter,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};
+const MKEY='wrack-ikarus-musik';
+function loadMusic(){try{return localStorage.getItem(MKEY)!=='0'}catch(e){return true}}
+function storeMusic(on){try{localStorage.setItem(MKEY,on?'1':'0')}catch(e){}}
+
+export {loadMusic,storeMusic,loadFilter,storeFilter,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};

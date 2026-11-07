@@ -10,6 +10,7 @@ Live auf Vercel, Code auf GitHub (`rthcr/wrack-ikarus`). Sprache in Code-Komment
 - `npm run build` – Produktionsbuild nach `dist/` (macht Vercel automatisch)
 - `npm run preview` – den Build lokal ansehen
 - `npm run check` – Test-Bot spielt 9 Runs direkt gegen die Spiellogik und meldet Abstürze oder hängende Runs
+- `python3 scripts/audio/generate.py [name …]` – Soundeffekte und Musik neu erzeugen (braucht numpy, scipy, ffmpeg); ohne Namen alles
 
 ## Aufbau
 
@@ -22,7 +23,7 @@ src/core/             Spiellogik, OHNE DOM und OHNE Phaser (läuft auch in Node,
   rng.js              Seed-Zufall (deterministisch)
   geometry.js         Sichtlinien, Schrittprüfung
   roomgen.js          Raumgenerator
-  storage.js          localStorage: Bestenliste, LP, Run, Name, Ton
+  storage.js          localStorage: Bestenliste, LP, Run, Name, Ton, Musik, Bildfilter
   bus.js              Ereignis-Bus zwischen Logik und Darstellung
   game.js             Regeln, Runden, Kampf, Items, Gegner-KI
 src/render/           Darstellung
@@ -32,7 +33,10 @@ src/render/           Darstellung
   sprites.js          malt art.js auf Canvas, erzeugt die 2. Animationsphase (Atmen/Schweben/Blinken), TS = 16
   tiles.js            Kacheln in 16×16 (Böden je Deck, Wände, Kisten, Konsolen, Türen, Kapsel) und ihre Lichtquellen
 src/ui/               DOM-Oberfläche: hud.js (Statuskonsole), screens.js (Titel/Ende/Bestenlisten), input.js (Tastatur, Knöpfe)
-src/audio/sfx.js      Soundeffekte (derzeit im Browser erzeugte Retro-Töne)
+src/audio/engine.js   Web-Audio: Dateien laden, Effekte abspielen, Musikspuren überblenden (nahtlose Loops)
+src/audio/sfx.js      Ton im Spiel: Effekte zu Ereignissen, Musik je Deck + Kampfspur, Schalter Musik/Ton
+public/assets/audio/  erzeugte MP3s und manifest.json (nicht von Hand bearbeiten, sondern neu erzeugen)
+scripts/audio/        generate.py: synthetischer Klang-Generator für alle Effekte und die Musik
 public/classic/       Die erste Fassung des Spiels als einzelne HTML-Datei, erreichbar unter /classic/. NICHT ändern.
 api/scores.js         Vercel-Funktion für die gemeinsame Bestenliste (Upstash Redis)
 scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
@@ -54,7 +58,12 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
   Kein Bloom/Weichzeichner über die ganze Kamera, das macht die Pixel matschig; Leuchten läuft über die additiven Lichtkreise.
 - Licht: `AMBIENT` in GameScene.js ist die Grunddunkelheit. Lichtquellen sind Objekte `{x,y,r,col,i}`.
   Der Schalter „Bildfilter“ (localStorage `wrack-ikarus-filter`) steuert kräftiges Leuchten und die Scanlines (`.stage.crt`).
-- Sounds und Musik als Dateien nach `public/assets/` legen und mit Quelle und Lizenz in `CREDITS.md` eintragen.
+- Ton: Effekt-Namen sind die `SFX.*`-Aufrufe in game.js (z. B. `shoot`, `hit`, `boom`). Neuer Effekt = Funktion in
+  `scripts/audio/generate.py` + Eintrag in `SFX` dort + Lautstärke in `VOL` (sfx.js). Fehlt eine Datei, spielt ein Ersatzton.
+- Musik: alles in A. Loops müssen ein Vielfaches von 1152 Samples lang sein (MP3-Block), sonst knackt die Schleife;
+  jede Datei hat 1 s Puffer davor/dahinter (`pad` im Manifest), geloopt wird nur der Mittelteil.
+  Die Kampfspur kommt dazu, sobald ein Gegner im Raum `aware` ist (siehe `target()` in sfx.js).
+- Fremde Grafiken, Sounds oder Musik nach `public/assets/` legen und mit Quelle und Lizenz in `CREDITS.md` eintragen.
 
 ## Hooks
 

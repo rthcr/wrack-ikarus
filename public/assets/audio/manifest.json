@@ -1,0 +1,45 @@
+{
+ "music": {
+  "amb_brut": {
+   "loop": 64,
+   "pad": 1.0
+  },
+  "amb_fracht": {
+   "loop": 64,
+   "pad": 1.0
+  },
+  "amb_reaktor": {
+   "loop": 64,
+   "pad": 1.0
+  },
+  "amb_wohn": {
+   "loop": 64,
+   "pad": 1.0
+  },
+  "kampf": {
+   "loop": 32,
+   "pad": 1.0
+  },
+  "kampf_boss": {
+   "loop": 32,
+   "pad": 1.0
+  }
+ },
+ "sfx": {
+  "boom": 1.6,
+  "die": 2.2,
+  "drop": 0.35,
+  "emp": 0.9,
+  "hit": 0.25,
+  "hurt": 0.42,
+  "kill": 0.6,
+  "lift": 1.1,
+  "lvl": 1.4,
+  "miss": 0.22,
+  "pick": 0.45,
+  "shoot": 0.32,
+  "spit": 0.55,
+  "win": 3.0,
+  "zap": 0.3
+ }
+}

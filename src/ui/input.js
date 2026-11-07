@@ -1,7 +1,7 @@
 // Eingabe über Tastatur, Steuerkreuz und Knöpfe. Klicks aufs Spielfeld verarbeitet die Phaser-Szene.
 import {S,startRun,endTurn,stepPlayer,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,cancelTarget,quitRun,setSel,canInput,inCombat} from '../core/game.js';
 import {normSeed,randomSeed} from '../core/rng.js';
-import {unlock,setSound,isSoundOn} from '../audio/sfx.js';
+import {unlock,setSound,isSoundOn,setMusic,isMusicOn} from '../audio/sfx.js';
 import {showScreen,renderClasses,drawPreview,sendScore} from './screens.js';
 
 const $=id=>document.getElementById(id);
@@ -34,6 +34,9 @@ $('fireBtn').onclick=()=>fireButton(false);$('abBtn').onclick=ability;$('ab2Btn'
 function soundLabel(){const on=isSoundOn();$('sndBtn').textContent='Ton: '+(on?'an':'aus');$('sndBtn').setAttribute('aria-pressed',on)}
 soundLabel();
 $('sndBtn').onclick=()=>{setSound(!isSoundOn());soundLabel()};
+function musicLabel(){const on=isMusicOn();$('musBtn').textContent='Musik: '+(on?'an':'aus');$('musBtn').setAttribute('aria-pressed',on)}
+musicLabel();
+$('musBtn').onclick=()=>{setMusic(!isMusicOn());musicLabel()};
 let quitArmed=null;
 $('quitBtn').onclick=()=>{const b=$('quitBtn');
   if(!quitArmed){b.textContent='Wirklich abbrechen?';b.classList.add('warn');quitArmed=setTimeout(()=>{quitArmed=null;b.textContent='Run abbrechen';b.classList.remove('warn')},3000);return}
