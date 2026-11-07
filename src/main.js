@@ -15,6 +15,7 @@ import {showScreen,renderClasses} from './ui/screens.js';
 import './ui/input.js';
 import './ui/settings.js';
 import './ui/titleArt.js';
+import './ui/controls.js';
 
 const $=id=>document.getElementById(id);
 
