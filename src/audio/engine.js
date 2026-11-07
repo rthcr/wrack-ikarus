@@ -5,6 +5,7 @@ const BASE='/assets/audio/';
 let ctx=null,master=null,sfxBus=null,musicBus=null,manifest=null;
 const buffers=new Map(),loading=new Map();
 const tracks=new Map();   // laufende Musikspuren: name -> {src,gain,target}
+const want=new Map();     // zuletzt gewünschte Lautstärke je Spur, gilt auch, solange die Datei noch lädt
 
 export function init(){
   if(ctx)return ctx;
@@ -82,12 +83,15 @@ function ramp(param,to,sec){
 /* Musikspur auf Lautstärke vol bringen (0 = ausblenden und danach stoppen). */
 export async function music(name,vol,fadeSec=2){
   if(!ctx)return;
+  want.set(name,vol);
   let t=tracks.get(name);
   if(t){t.target=vol;ramp(t.gain.gain,vol,fadeSec);if(vol<=0)stopLater(name,t,fadeSec);return}
   if(vol<=0)return;
   const meta=(await loadManifest()).music[name];const buf=await load(name);
   if(!buf||!meta)return;
+  vol=want.get(name);   // Während des Ladens kann sich die Lage geändert haben (z. B. Kampf schon vorbei)
   if(tracks.has(name)){music(name,vol,fadeSec);return}   // inzwischen von anderer Stelle gestartet
+  if(!(vol>0))return;
   const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
   // Nur den sauberen Mittelteil loopen, siehe scripts/audio/generate.py (PAD)
   src.loopStart=meta.pad;src.loopEnd=meta.pad+meta.loop;

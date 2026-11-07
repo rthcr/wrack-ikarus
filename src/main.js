@@ -41,6 +41,8 @@ function fit(){
   if(game.scale.zoom!==s)game.scale.setZoom(s);
 }
 on('screen',s=>{if(s==='game')requestAnimationFrame(fit)});
+// Neuer Run: Seed in die Adresszeile, damit man den Link teilen kann
+on('reset',()=>{try{history.replaceState(null,'','#seed-'+S.G.seed)}catch(e){}});
 window.addEventListener('resize',()=>{if(S.screen==='game')fit()});
 
 /* Bildfilter (Leuchten, Röhrenmonitor) an/aus */
@@ -57,7 +59,7 @@ applyFilter();
 function boot(){
   const saved=loadRun();
   let hs='';try{hs=location.hash||''}catch(e){}
-  const m=/^#seed-([A-Za-z0-9]{3,10})$/.exec(hs);
+  const m=/^#seed-([A-Za-z0-9]{1,10})$/.exec(hs);
   $('seedIn').value=m?normSeed(m[1]):randomSeed();
   if(saved&&saved.sel)setSel(saved.sel);
   renderClasses();

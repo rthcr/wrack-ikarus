@@ -47,7 +47,7 @@ function validate(b) {
     .slice(0, 16);
   if (!name) return 'Bitte gib einen Namen ein.';
   const seed = typeof b.seed === 'string' ? b.seed.toUpperCase() : '';
-  if (!/^[A-Z0-9]{3,10}$/.test(seed)) return 'Ungültiger Seed.';
+  if (!/^[A-Z0-9]{1,10}$/.test(seed)) return 'Ungültiger Seed.';
   if (!CLASSES.includes(b.cls)) return 'Ungültige Klasse.';
   const win = b.win === true;
   if (!isInt(b.room, 1, ROOMS) || !isInt(b.cleared, 0, ROOMS) || !isInt(b.rounds, 0, 20000) ||
@@ -101,8 +101,9 @@ module.exports = async function handler(req, res) {
         try { body = JSON.parse(body); } catch (err) { body = null; }
       }
       const key = clientKey(req);
-      const [count] = await redis([['INCR', key]]);
-      if (count === 1) await redis([['EXPIRE', key, '60']]);
+      // Zähler mit Ablaufzeit in einem Rutsch anlegen (NX: nur wenn noch keiner läuft), dann hochzählen.
+      // So kann kein Zähler ohne Ablaufzeit übrig bleiben, der den Anschluss dauerhaft sperrt.
+      const [, count] = await redis([['SET', key, '0', 'EX', '60', 'NX'], ['INCR', key]]);
       if (count > PER_MINUTE) {
         res.status(429).json({ error: 'Zu viele Einträge. Versuch es in einer Minute nochmal.' });
         return;

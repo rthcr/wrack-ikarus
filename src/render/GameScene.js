@@ -67,7 +67,7 @@ export class GameScene extends Phaser.Scene{
     const offs=[
       on('fx',f=>this.onFx(f)),
       on('hurt',()=>this.onHurt()),
-      on('reset',()=>{this.fx=[];this.flashes=[]}),
+      on('reset',()=>{this.fx=[];this.flashes=[];this.roomKey=''}),
       on('filter',v=>this.setFilter(v)),
     ];
     this.events.once('shutdown',()=>offs.forEach(f=>f()));

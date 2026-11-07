@@ -13,7 +13,8 @@ document.addEventListener('keydown',e=>{
   const screen=S.screen,G=S.G;
   if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'){if(e.target.id==='nameIn'){e.preventDefault();sendScore()}else if(screen==='title'){e.preventDefault();startFromTitle()}}return}
   if(e.ctrlKey||e.metaKey||e.altKey)return;
-  if(screen==='title'&&e.key==='Enter'){e.preventDefault();startFromTitle();return}
+  // Enter startet den Run, außer der Fokus liegt auf einem Knopf oder Link: dann löst Enter diesen aus
+  if(screen==='title'&&e.key==='Enter'){if(e.target&&e.target.closest&&e.target.closest('button,a,summary,select,textarea'))return;e.preventDefault();startFromTitle();return}
   if(screen!=='game')return;
   if(G&&G.offer){const m=/^Digit([1-3])$/.exec(e.code);if(m){e.preventDefault();takePerk(+m[1]-1)}return}
   if(e.code==='Escape'){cancelTarget();return}

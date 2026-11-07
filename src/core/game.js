@@ -60,8 +60,7 @@ function startRun(seed,cls){
      map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,
      p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   if(unl(0))startPerk();
-  finishing=false;busy=false;pendingEnd=false;hover=null;emit('reset');
-  try{history.replaceState(null,'','#seed-'+seed)}catch(e){}
+  finishing=false;busy=false;pendingEnd=false;hover=null;emit('reset');   // main.js schreibt dabei den Seed in die Adresszeile
   log('Andockschleuse offen. Die Luft riecht nach Ozon und etwas Süßlichem.','warn');
   showScreen('game');
   enterRoom(1,'L');
@@ -103,13 +102,15 @@ function autoEnd(){
 async function enemyPhase(){
   G.phase='enemy';G.target=null;busy=true;hover=null;
   log('Gegnerzug','sep');banner('Gegnerzug','enemy');computeVis();updateUI();
+  const run=G;   // Wird inzwischen ein neuer Run gestartet, hört dieser Gegnerzug auf
   await sleep(500);
   const list=G.mons.filter(m=>m.hp>0);
   for(const m of list){
-    if(!live())break;if(m.hp<=0)continue;
-    G.active=m.id;await monTurn(m);G.active=null;
+    if(G!==run||!live())break;if(m.hp<=0)continue;
+    G.active=m.id;await monTurn(m);if(G!==run)return;G.active=null;
     G.mons=G.mons.filter(x=>x.hp>0);computeVis();updateUI();
   }
+  if(G!==run)return;
   busy=false;
   if(live()&&G.phase==='enemy')startRound();
 }
@@ -318,15 +319,18 @@ const nadeOk=(x,y)=>G.map[x+y*RW]===FLOOR&&VIS[x+y*RW]&&cheb({x,y},G.p)<=5;
 
 /* ---------- Bewegung ---------- */
 async function walk(path,then){
-  busy=true;hover=null;
+  busy=true;hover=null;const run=G;
   for(const i of path){
+    if(G!==run||!live()){then=null;break}   // Run abgebrochen oder neuer Run: nicht weiterlaufen
     const x=i%RW,y=(i/RW)|0;
     const m=monAt(x,y);
     if(m){computeVis();log(`Hinterhalt! ${mName(m)} versperrt den Weg.`,'warn');m.gx=m.x;m.gy=m.y;then=null;break}
     G.p.x=x;G.p.y=y;if(G.phase==='player')G.p.mp--;SFX.step();
     pickup();computeVis();updateUI();await sleep(80);
   }
+  if(G!==run)return;
   busy=false;computeVis();updateUI();
+  if(!live())return;
   if(then)then();else autoEnd();
 }
 function stepPlayer(dx,dy){
@@ -405,7 +409,7 @@ function distTo(tx,ty,self){
 }
 function freeFor(m,x,y){return canStep(G.map,m.x,m.y,x,y)&&!monAt(x,y)&&!(x===G.p.x&&y===G.p.y)}
 async function monTurn(m){
-  const d=MON[m.t],p=G.p;
+  const d=MON[m.t],p=G.p,run=G,gone=()=>G!==run;
   const shown=()=>VIS[m.x+m.y*RW];
   if(m.stun>0){m.stun--;if(shown()){log(`${d.nom} ist gelähmt.`,'dim');await sleep(250)}return}
   if(m.spit>0)m.spit--;
@@ -423,7 +427,7 @@ async function monTurn(m){
   if(!m.known)return;
   const attack=async()=>{
     if(!sees)return false;
-    if(cheb(m,p)===1&&!d.nomelee){if(shown())await sleep(150);monAttack(m,mAtk(m),'trifft');await sleep(300);return true}
+    if(cheb(m,p)===1&&!d.nomelee){if(shown())await sleep(150);if(gone())return true;monAttack(m,mAtk(m),'trifft');await sleep(300);return true}
     if(d.range&&cheb(m,p)<=d.range&&(!d.boss||(cheb(m,p)>1&&m.spit<=0))){
       fx.push({type:'line',a:{x:m.x,y:m.y},b:{x:p.x,y:p.y},col:d.boss?'#8bdc5f':'#ff4d3d',t0:performance.now(),dur:240});
       if(d.boss){m.spit=2;SFX.spit();monAttack(m,6,'bespuckt')}else{SFX.zap();monAttack(m,mAtk(m),'beschießt')}
@@ -431,7 +435,7 @@ async function monTurn(m){
     }
     return false;
   };
-  if(await attack())return;
+  if(await attack()||gone())return;
   if(!G.alive)return;
   for(let s=0;s<d.mp;s++){
     if(sees&&cheb(m,p)===1)break;
@@ -443,7 +447,7 @@ async function monTurn(m){
     if(!best)break;
     const wasShown=shown();
     m.x=best[0];m.y=best[1];computeVis();
-    if(wasShown||shown()){emit('sfx','move',m.t);updateUI();await sleep(130)}
+    if(wasShown||shown()){emit('sfx','move',m.t);updateUI();await sleep(130);if(gone())return}
     sees=canSee(m);if(sees)notice();
   }
   if(await attack())return;
@@ -469,7 +473,8 @@ function restore(data){
   if(!(data&&data.G&&data.G.room&&data.screen==='game'&&data.G.alive&&!data.G.over&&data.G.map&&data.G.map.length===RW*RH))return false;
   G=data.G;if(data.sel&&CLS[data.sel])sel=data.sel;finishing=false;busy=false;pendingEnd=false;hover=null;
   showScreen('game');
-  if(G.phase==='enemy'){G.active=null;startRound()}else{computeVis();updateUI()}
+  // Im Gegnerzug gespeichert: Die Gegner ziehen komplett neu, sonst ließe sich ihr Zug durch Neuladen überspringen
+  if(G.phase==='enemy'){G.active=null;enemyPhase()}else{computeVis();updateUI();autoEnd()}
   return true;
 }
 const setScreen=s=>{screen=s};
