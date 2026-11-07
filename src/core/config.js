@@ -11,25 +11,7 @@ const FLOORTINT=['#1a222c','#17231f','#271e1a','#211a28'];
 const ALPH='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const tierOf=i=>i>=ROOMS?4:i<=3?1:i<=6?2:3;
 
-const PAL={k:'#06080b',w:'#eef3f6',g:'#9aa6b2',d:'#56616e',D:'#2c343e',c:'#5fd3e6',C:'#227f92',a:'#ffb000',A:'#9a5d06',r:'#ff4d3d',R:'#8f1f1a',G:'#8bdc5f',n:'#3f8a2c',p:'#b779e8',P:'#5b2e86',y:'#ffe066',o:'#ff8a3d'};
-const SPR={
- player:["..hhhh..",".hccccH.",".hcwccH.","..hhhh..",".dhhhhd.","d.hHHh.d","..h..h..",".DD..DD."],
- larva:["........","........","...GG...","..GnGG..",".GGGGnG.","GnGGGGG.",".G.G.G.G","........"],
- drone:["..d..d..","...dd...",".dggggd.","dgkrrkgd","dggggggd",".dggggd.","..d..d..",".d....d."],
- mutant:["..pppp..",".prpprp.",".pppppp.","..PppP..",".pPPPPp.","p.PPPP.p","..P..P..",".PP..PP."],
- turret:["...gg...","...gg...","..dggd..",".dgrrgd.",".dggggd.","..dddd..",".DddddD.","DDDDDDDD"],
- hunter:["C......C","cC.CC.Cc",".CccccC.",".CyccyC.","..CccC..",".CCccCC.","C.C..C.C","c......c"],
- walker:[".dddddd.","dggggggd","dgrggrgd","dggggggd","DddddddD","gD.DD.Dg",".g.gg.g.","dd....dd"],
- queen:["p.pPPp.p",".pppppp.","ppyppypp","pPppppPp",".pGGGGp.","pp.GG.pp","p.pppp.p","p..pp..p"],
- med:["........",".wwwwww.",".wwrrww.",".wrrrrw.",".wrrrrw.",".wwrrww.",".wwwwww.","........"],
- cell:["...dd...","..yyyy..","..yaay..","..yyyy..","..yaay..","..yyyy..","..yyyy..","........"],
- nade:["....d...","...dg...","..nnnn..",".nGnnnn.",".nnnnnn.",".nnnnnn.","..nnnn..","........"],
- stim:["......w.",".....w..","....cw..","...ccc..","..ccc...",".ccc....",".gc.....","g......."],
- scan:["........",".dddddd.",".dccccd.",".dcCccd.",".dccccd.",".dddddd.",".dgddgd.","........"],
- phase:["........","...pp...","..pwwp..",".pwccwp.",".pwccwp.","..pwwp..","...pp...","........"],
- blade:["......xX",".....xX.","....xX..","...xX...","..xX....",".dd.....","dd......","d......."],
- armor:["........",".hh..hh.",".hhhhhh.",".hhhhhh.",".hhHHhh.",".hhhhhh.","..hhhh..","........"]
-};
+/* Die Pixel-Art liegt in src/render/art.js. */
 
 const CLS={
  marine:{n:'Marine',hp:30,atk:4,def:1,ammo:6,mp:3,dodge:0,ab:'Sperrfeuer',abd:'trifft alle angrenzenden Gegner mit Angriff +3. Abklingzeit 3 Runden.',cd:3,inv:['med'],gear:'Start: Medi-Injektor, 6 Schuss',col:{h:'#8f9a3e',H:'#545b22'}},
@@ -73,4 +55,4 @@ const IT={
 const ITABLE={1:{med:4,cell:4,nade:1,wrench:2,vest:2,stim:1},2:{med:4,cell:3,nade:2,blade:2,suit:1,vest:1,stim:1,phase:1,scan:1},3:{med:5,cell:3,nade:2,cutter:2,exo:1,suit:1,stim:1,phase:1},4:{med:3,cell:2,nade:2}};
 const SHAPES=[[[0,0]],[[0,0],[1,0]],[[0,0],[0,1]],[[0,0],[1,0],[0,1],[1,1]],[[0,0],[1,0],[2,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[0,1]],[[0,0],[1,0],[1,1]]];
 
-export {RW,RH,T,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,TIERNAME,ROOMNAMES,FLOORTINT,ALPH,tierOf,PAL,SPR,CLS,UNL,UNLD,AB2,MON,RTABLE,ELITE,IT,ITABLE,SHAPES};
+export {RW,RH,T,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,TIERNAME,ROOMNAMES,FLOORTINT,ALPH,tierOf,CLS,UNL,UNLD,AB2,MON,RTABLE,ELITE,IT,ITABLE,SHAPES};

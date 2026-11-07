@@ -20,4 +20,8 @@ const TKEY='wrack-ikarus-ton';
 function loadSound(){try{return localStorage.getItem(TKEY)!=='0'}catch(e){return true}}
 function storeSound(on){try{localStorage.setItem(TKEY,on?'1':'0')}catch(e){}}
 
-export {loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};
+const FKEY='wrack-ikarus-filter';
+function loadFilter(){try{return localStorage.getItem(FKEY)!=='0'}catch(e){return true}}
+function storeFilter(on){try{localStorage.setItem(FKEY,on?'1':'0')}catch(e){}}
+
+export {loadFilter,storeFilter,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};

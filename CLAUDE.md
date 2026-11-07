@@ -18,7 +18,7 @@ index.html            Seitengerüst (Titel, Spiel, Ende); lädt src/main.js
 src/main.js           Einstieg: Phaser starten, Module verbinden, gespeicherten Run fortsetzen
 src/style.css         Gestaltung der Oberfläche
 src/core/             Spiellogik, OHNE DOM und OHNE Phaser (läuft auch in Node, siehe npm run check)
-  config.js           Konstanten und Datentabellen (Klassen, Gegner, Items, Sprites als Zeichenketten)
+  config.js           Konstanten und Datentabellen (Klassen, Gegner, Items)
   rng.js              Seed-Zufall (deterministisch)
   geometry.js         Sichtlinien, Schrittprüfung
   roomgen.js          Raumgenerator
@@ -26,8 +26,11 @@ src/core/             Spiellogik, OHNE DOM und OHNE Phaser (läuft auch in Node,
   bus.js              Ereignis-Bus zwischen Logik und Darstellung
   game.js             Regeln, Runden, Kampf, Items, Gegner-KI
 src/render/           Darstellung
-  GameScene.js        Phaser-Szene: Raum, Figuren mit Bewegung, Markierungen, Partikel, Kamerawackeln
-  sprites.js          Pixel-Sprites aus config.js auf Canvas malen (für Phaser und die Oberfläche)
+  GameScene.js        Phaser-Szene: Raum, Figuren (gleiten, hüpfen, Ausfallschritt), Licht und Dunkelheit,
+                      Markierungen, Partikel, Kamerawackeln
+  art.js              Pixel-Art 16×16 als Zeichenketten (Figuren, Gegner, Items), Palette PAL
+  sprites.js          malt art.js auf Canvas, erzeugt die 2. Animationsphase (Atmen/Schweben/Blinken), TS = 16
+  tiles.js            Kacheln in 16×16 (Böden je Deck, Wände, Kisten, Konsolen, Türen, Kapsel) und ihre Lichtquellen
 src/ui/               DOM-Oberfläche: hud.js (Statuskonsole), screens.js (Titel/Ende/Bestenlisten), input.js (Tastatur, Knöpfe)
 src/audio/sfx.js      Soundeffekte (derzeit im Browser erzeugte Retro-Töne)
 public/classic/       Die erste Fassung des Spiels als einzelne HTML-Datei, erreichbar unter /classic/. NICHT ändern.
@@ -46,7 +49,12 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Speicherschlüssel:** Bestenliste und LP teilen sich die Schlüssel mit der klassischen Fassung (Fortschritt gilt in beiden).
   Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v3`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
 - Nach Logikänderungen `npm run check` laufen lassen.
-- Grafiken, Sounds und Musik als Dateien nach `public/assets/` legen und mit Quelle und Lizenz in `CREDITS.md` eintragen.
+- Grafik: Kacheln sind 16×16 (`TS`), die Welt 272×208 Pixel, Phaser skaliert mit `pixelArt: true`.
+  Neue Figuren in `art.js`: genau 16 Zeilen à 16 Zeichen, nur Farbzeichen aus `PAL` (plus h/H bzw. x/X zum Umfärben).
+  Kein Bloom/Weichzeichner über die ganze Kamera, das macht die Pixel matschig; Leuchten läuft über die additiven Lichtkreise.
+- Licht: `AMBIENT` in GameScene.js ist die Grunddunkelheit. Lichtquellen sind Objekte `{x,y,r,col,i}`.
+  Der Schalter „Bildfilter“ (localStorage `wrack-ikarus-filter`) steuert kräftiges Leuchten und die Scanlines (`.stage.crt`).
+- Sounds und Musik als Dateien nach `public/assets/` legen und mit Quelle und Lizenz in `CREDITS.md` eintragen.
 
 ## Hooks
 

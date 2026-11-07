@@ -41,7 +41,7 @@ function renderHud(){
   for(let i=0;i<INV;i++){const k=p.inv[i];const row=document.createElement('div');row.className='slotrow';const b=document.createElement('button');b.className='slot';row.append(b);
     if(!k){b.disabled=true;b.innerHTML=`<span class="kbd">${i+1}</span><span class="empty">leer</span>`}
     else{const d=IT[k];const ds=d.slot?(d.slot==='wpn'?`+${d.v} Angriff · ausrüsten`:`+${d.v} Panzerung · ausrüsten`):d.d;
-      b.innerHTML=`<span class="kbd">${i+1}</span><img alt="" src="${iconURL(itemSpr(k),'i_'+k,24)}"><span class="nm">${d.n}</span><span class="ds">${ds}</span>`;
+      b.innerHTML=`<span class="kbd">${i+1}</span><img alt="" src="${iconURL(itemSpr(k),'i_'+k,32)}"><span class="nm">${d.n}</span><span class="ds">${ds}</span>`;
       b.disabled=!canInput();b.onclick=()=>useItem(i);
       const x=document.createElement('button');x.className='drop';x.textContent='✕';x.title='Ablegen';x.setAttribute('aria-label',`${d.n} ablegen`);x.disabled=!canInput();x.onclick=()=>dropItem(i);row.append(x)}
     inv.append(row)}
@@ -50,7 +50,7 @@ function renderHud(){
   const seenM=G.mons.filter(m=>m.hp>0&&VIS[m.x+m.y*RW]).sort((a,b)=>cheb(a,p)-cheb(b,p));
   $('seenList').innerHTML=seenM.length?seenM.slice(0,6).map(m=>{const d=MON[m.t];
     let s,cl='';if(m.stun>0){s=`gelähmt (${m.stun})`;cl='stun'}else if(!m.aware){s='hat dich noch nicht bemerkt'}else if(canSee(m)){s='sieht dich';cl='see'}else{s='sucht dich'}
-    return`<div class="row"><img alt="" src="${iconURL(monSpr(m.t),'m_'+m.t,20)}"><span>${d.n}${m.elite?' (Elite)':''}</span><span class="mbar"><i style="width:${Math.max(0,m.hp/m.max*100)}%"></i></span><span class="st ${cl}">${s} · ${cheb(m,p)} ${cheb(m,p)===1?'Feld':'Felder'}</span></div>`}).join('')
+    return`<div class="row"><img alt="" src="${iconURL(monSpr(m.t),'m_'+m.t,32)}"><span>${d.n}${m.elite?' (Elite)':''}</span><span class="mbar"><i style="width:${Math.max(0,m.hp/m.max*100)}%"></i></span><span class="st ${cl}">${s} · ${cheb(m,p)} ${cheb(m,p)===1?'Feld':'Felder'}</span></div>`}).join('')
     :`<p class="muted">${G.phase==='explore'?'Raum gesichert.':'Niemand in Sichtlinie. Hinter der Deckung kann trotzdem etwas lauern.'}</p>`;
   const ab=$('abBtn');$('abName').textContent=c.ab;
   $('abSub').textContent=G.phase!=='player'?'nur im Kampf':p.cd>0?`lädt ${p.cd} Rd. · R`:p.act>0?'bereit · R':'Aktion verbraucht';

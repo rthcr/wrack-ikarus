@@ -70,6 +70,7 @@ function showScreen(s){
   $('scrTitle').hidden=s!=='title';$('scrGame').hidden=s!=='game';$('scrEnd').hidden=s!=='end';
   $('quitBtn').hidden=s!=='game';$('quitBtn').textContent='Run abbrechen';$('quitBtn').classList.remove('warn');
   if(s==='title'){renderClasses();renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent='Bergungseinsatz · Station IKARUS-7'}
+  if(s==='game')window.scrollTo(0,0);
   if(s==='end'){renderEnd();$('topInfo').textContent='Einsatzbericht';window.scrollTo(0,0)}
 }
 function lpLine(k){
@@ -80,7 +81,7 @@ function renderClasses(){
   const box=$('classes');box.innerHTML='';
   Object.entries(CLS).forEach(([k,c])=>{
     const b=document.createElement('button');b.className='cls';b.setAttribute('aria-pressed',k===S.sel?'true':'false');
-    b.innerHTML=`<img alt="" src="${iconURL(playerSpr(k),'cls_'+k,40)}"><span class="nm">${c.n}</span><span class="st">TP ${c.hp} · Angriff ${c.atk} · Panzerung ${c.def} · Bewegung ${c.mp}</span><span class="ab"><b>${c.ab}</b> ${c.abd}</span><span class="gear">${c.gear}</span>${lpLine(k)}`;
+    b.innerHTML=`<img alt="" src="${iconURL(playerSpr(k),'cls_'+k,48)}"><span class="nm">${c.n}</span><span class="st">TP ${c.hp} · Angriff ${c.atk} · Panzerung ${c.def} · Bewegung ${c.mp}</span><span class="ab"><b>${c.ab}</b> ${c.abd}</span><span class="gear">${c.gear}</span>${lpLine(k)}`;
     b.onclick=()=>{setSel(k);renderClasses()};box.append(b);
   });
 }

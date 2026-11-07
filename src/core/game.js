@@ -484,6 +484,6 @@ const S={
 };
 
 export {S,timing,PERKS,
-  startRun,startRound,endTurn,stepPlayer,tileClick,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,
+  startRun,enterRoom,startRound,endTurn,stepPlayer,tileClick,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,
   cancelTarget,quitRun,restore,setScreen,setSel,setHover,computeVis,updateUI,
   atk,def,need,dodge,abCd,score,live,canInput,inCombat,monAt,visMonAt,itemAt,canSee,canShoot,shootable,shootTargets,nadeOk,pathTo,unl,lp};
