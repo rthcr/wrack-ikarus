@@ -40,7 +40,17 @@ export function createTitleScene(W=400,H=150,seed=7){
 
   const img=new ImageData(W,H);
   const P={cx:W-38,cy:H+62,R:Math.round(W*.355)};  // Planet unten rechts, Größe hängt nur an der Breite
-  const S={x:Math.round(W*.47),y:20};               // Station
+  // Station: wird auf eine eigene Ebene gezeichnet und dann um ANGLE gedreht eingesetzt.
+  // PIV = Drehpunkt in Stationskoordinaten (Mitte des Hauptmoduls), POS = wo er in der Szene liegt.
+  const ANGLE=30*Math.PI/180;                         // im Uhrzeigersinn: die Station kippt Richtung Planet
+  const LW=160,LH=76,LOX=10,LOY=4;                    // Ebene und Versatz der Stationskoordinaten darin
+  const PIV={x:78,y:35},POS={x:Math.round(W*.655),y:66};
+  const layer=typeof OffscreenCanvas!=='undefined'?new OffscreenCanvas(LW,LH):Object.assign(document.createElement('canvas'),{width:LW,height:LH});
+  const lctx=layer.getContext('2d');
+  let up=null,upW=0,upH=0,lastLayer=-1;               // 4-fach hochskalierte Ebene (Scale2x zweimal)
+  const COS=Math.cos(ANGLE),SIN=Math.sin(ANGLE);
+  /* Stationspunkt (lokal) -> Szenenpunkt */
+  const toScene=(lx,ly)=>{const vx=lx-PIV.x,vy=ly-PIV.y;return{x:POS.x+vx*COS-vy*SIN,y:POS.y+vx*SIN+vy*COS}};
   const L=[-.72,-.6,.12];   // Licht schräg von hinten links oben: nur eine Sichel des Planeten leuchtet{const l=Math.hypot(...L);L[0]/=l;L[1]/=l;L[2]/=l}
 
   function background(t){
@@ -80,7 +90,7 @@ export function createTitleScene(W=400,H=150,seed=7){
   }
 
   function station(ctx,t){
-    const {x:sx,y:sy}=S,f=(c,x,y,w,h)=>{ctx.fillStyle=c;ctx.fillRect(sx+x,sy+y,w,h)};
+    const sx=LOX,sy=LOY,f=(c,x,y,w,h)=>{ctx.fillStyle=c;ctx.fillRect(sx+x,sy+y,w,h)};
     // Ringbruchstück hinten (oben links)
     ring(ctx,sx+78,sy+35,34,200,318,t,false);
     // Gittermast mit Sonnensegeln
@@ -109,9 +119,8 @@ export function createTitleScene(W=400,H=150,seed=7){
     if(((t*1.1)%2)<1)f('#ffb000',134,35,1,1);
     // Ringbruchstück vorn (unten rechts)
     ring(ctx,sx+78,sy+35,34,18,74,t,true);
-    // Notsignal oben am Hauptmodul mit Lichthof
+    // Notsignal oben am Hauptmodul (Lichthof kommt nach dem Drehen, siehe beacon)
     const on=(t%1.4)<.55;
-    if(on){const g=ctx.createRadialGradient(sx+95,sy+19,0,sx+95,sy+19,12);g.addColorStop(0,'rgba(255,77,61,.55)');g.addColorStop(1,'rgba(255,77,61,0)');ctx.fillStyle=g;ctx.fillRect(sx+83,sy+7,24,24)}
     f(on?'#ff4d3d':'#5a1c18',94,18,2,2);f('#56616e',94,20,2,1);
   }
   function ring(ctx,cx,cy,R,a0,a1,t,front){
@@ -127,14 +136,54 @@ export function createTitleScene(W=400,H=150,seed=7){
     if(!front)return;
   }
 
+  /* Scale2x (EPX): verdoppelt Pixel-Art und rundet Treppen, damit gedrehte dünne Linien nicht zerfasern */
+  function scale2x(src,w,h){
+    const out=new Uint32Array(w*h*4),W2=w*2;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const P=src[y*w+x],A=y>0?src[(y-1)*w+x]:P,B=x<w-1?src[y*w+x+1]:P,C=x>0?src[y*w+x-1]:P,D=y<h-1?src[(y+1)*w+x]:P;
+      let e0=P,e1=P,e2=P,e3=P;
+      if(C===A&&C!==D&&A!==B)e0=A;if(A===B&&A!==C&&B!==D)e1=B;if(D===C&&D!==B&&C!==A)e2=C;if(B===D&&B!==A&&D!==C)e3=D;
+      const o=(y*2)*W2+x*2;out[o]=e0;out[o+1]=e1;out[o+W2]=e2;out[o+W2+1]=e3;
+    }
+    return out;
+  }
+  function stationRotated(t){
+    // Ebene höchstens 10-mal pro Sekunde neu zeichnen und hochskalieren (Lichter blinken trotzdem flüssig genug)
+    if(!up||Math.abs(t-lastLayer)>.1){
+      lastLayer=t;lctx.clearRect(0,0,LW,LH);station(lctx,t);
+      const raw=new Uint32Array(lctx.getImageData(0,0,LW,LH).data.buffer.slice(0));
+      up=scale2x(scale2x(raw,LW,LH),LW*2,LH*2);upW=LW*4;upH=LH*4;
+    }
+    const d=new Uint32Array(img.data.buffer);
+    // Rahmen der gedrehten Ebene in der Szene
+    const cs=[[0,0],[LW,0],[0,LH],[LW,LH]].map(([x,y])=>toScene(x-LOX,y-LOY));
+    const x0=Math.max(0,Math.floor(Math.min(...cs.map(c=>c.x)))),x1=Math.min(W,Math.ceil(Math.max(...cs.map(c=>c.x))));
+    const y0=Math.max(0,Math.floor(Math.min(...cs.map(c=>c.y)))),y1=Math.min(H,Math.ceil(Math.max(...cs.map(c=>c.y))));
+    for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+      const vx=x+.5-POS.x,vy=y+.5-POS.y;
+      const lx=PIV.x+LOX+vx*COS+vy*SIN,ly=PIV.y+LOY-vx*SIN+vy*COS;   // zurückgedreht in Ebenenkoordinaten
+      const ux=Math.floor(lx*4),uy=Math.floor(ly*4);
+      if(ux<0||uy<0||ux>=upW||uy>=upH)continue;
+      const c=up[uy*upW+ux];if((c>>>24)<128)continue;
+      d[y*W+x]=c|0xff000000;
+    }
+  }
+  function beacon(ctx,t){
+    if((t%1.4)>=.55)return;
+    const b=toScene(95,19),g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,12);
+    g.addColorStop(0,'rgba(255,77,61,.55)');g.addColorStop(1,'rgba(255,77,61,0)');ctx.fillStyle=g;ctx.fillRect(b.x-12,b.y-12,24,24);
+  }
+
   function overlays(ctx,t){
     // Gas aus dem Einschlag
-    const hx=S.x+87,hy=S.y+45;
+    const h=toScene(87,45);
     for(let k=0;k<14;k++){const age=((t*.55)+k/14)%1,sp=(k*37%11)/11-.5;
-      const x=Math.round(hx+age*26+sp*age*10),y=Math.round(hy+age*14+sp*age*16);
+      // Ausströmrichtung (26,14) und Streuung mitdrehen
+      const ax=age*26+sp*age*10,ay=age*14+sp*age*16;
+      const x=Math.round(h.x+ax*COS-ay*SIN),y=Math.round(h.y+ax*SIN+ay*COS);
       ctx.fillStyle=`rgba(199,208,216,${(1-age)*.7})`;ctx.fillRect(x,y,age>.5?2:1,1)}
     // Trümmer treiben um die Station
-    const bx=S.x-40,by=0,bw=200,bh=H*.8;
+    const bx=POS.x-130,by=0,bw=210,bh=H*.85;
     for(const d of debris){
       const x=Math.round(bx+(((d.x*bw+d.vx*t*6)%bw)+bw)%bw),y=Math.round(by+(((d.y*bh+d.vy*t*6)%bh)+bh)%bh);
       const sh=SHAPES[d.s],rot=Math.floor(t*d.rot)%4;ctx.fillStyle=d.col;
@@ -148,8 +197,8 @@ export function createTitleScene(W=400,H=150,seed=7){
   return{
     W,H,
     draw(ctx,t){
-      background(t);planet(t);ctx.putImageData(img,0,0);
-      station(ctx,t);overlays(ctx,t);
+      background(t);planet(t);stationRotated(t);ctx.putImageData(img,0,0);
+      beacon(ctx,t);overlays(ctx,t);
     },
   };
 }
