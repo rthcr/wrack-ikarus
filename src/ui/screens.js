@@ -9,11 +9,19 @@ import {iconURL,playerSpr} from '../render/sprites.js';
 
 const $=id=>document.getElementById(id);
 
+/* Datum eines Eintrags: kurz (07.11.26), Uhrzeit beim Darüberfahren */
+function dateSpan(v){
+  const d=v?new Date(v):null;if(!d||isNaN(d))return'<span class="dt"></span>';
+  const short=d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  const long=d.toLocaleString('de-DE',{dateStyle:'medium',timeStyle:'short'});
+  return`<time class="dt" datetime="${d.toISOString()}" title="${long} Uhr">${short}</time>`;
+}
+
 function renderScores(el,hl){
   const list=loadScores();el.innerHTML='';
   if(!list.length){const li=document.createElement('li');li.className='none';li.textContent='Noch keine Einträge. Dein erster Run setzt die Marke.';el.append(li);return}
   list.forEach((s,i)=>{const li=document.createElement('li');if(hl&&s.id===hl)li.className='new';
-    li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${s.score.toLocaleString('de-DE')}</span><span>${CLS[s.cls]?CLS[s.cls].n:s.cls}</span><span class="sd">${s.seed}</span><span class="rs${s.win?' win':''}">${s.win?'entkommen':'Raum '+s.room}</span>`;el.append(li)});
+    li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${s.score.toLocaleString('de-DE')}</span><span>${CLS[s.cls]?CLS[s.cls].n:s.cls}</span><span class="sd">${s.seed}</span><span class="rs${s.win?' win':''}">${s.win?'entkommen':'Raum '+s.room}</span>${dateSpan(s.date||s.id)}`;el.append(li)});
 }
 /* Gemeinsame Bestenliste über /api/scores (nur auf der Vercel-Seite erreichbar) */
 const API='/api/scores';let sending=false;
@@ -26,7 +34,7 @@ function renderGlobal(el,list,hl){
   if(list==='loading')return note('Lade Bestenliste …');
   if(list===null)return note('Die gemeinsame Bestenliste ist hier gerade nicht erreichbar.');
   if(!list.length)return note('Noch niemand eingetragen. Der erste Platz ist frei.');
-  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${Number(s.score).toLocaleString('de-DE')}</span><span class="nm">${esc(s.name)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''} · ${esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?'entkommen':'Raum '+Number(s.room)}</span></li>`).join('');
+  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${Number(s.score).toLocaleString('de-DE')}</span><span class="nm">${esc(s.name)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''} · ${esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?'entkommen':'Raum '+Number(s.room)}</span>${dateSpan(s.date)}</li>`).join('');
 }
 function loadGlobal(el,hl){renderGlobal(el,'loading');fetchGlobal().then(l=>renderGlobal(el,l,hl))}
 function sendMsg(t,k){const m=$('sendMsg');m.textContent=t;m.className='hint'+(k?' '+k:'')}
