@@ -7,6 +7,7 @@ import {loadScores,lp,loadName,storeName} from '../core/storage.js';
 import {S,setScreen,setSel} from '../core/game.js';
 import {on} from '../core/bus.js';
 import {iconURL,playerSpr} from '../render/sprites.js';
+import {esc} from './esc.js';
 
 const $=id=>document.getElementById(id);
 const TOP_TITLE=()=>L('Bergungseinsatz · Station IKARUS-7','Salvage mission · Station IKARUS-7');
@@ -72,11 +73,10 @@ function renderScores(el,hl){
   const list=loadScores();el.innerHTML='';
   if(!list.length){const li=document.createElement('li');li.className='none';li.textContent=L('Noch keine Einträge. Dein erster Run setzt die Marke.','No entries yet. Your first run sets the mark.');el.append(li);return}
   list.forEach((s,i)=>{const li=document.createElement('li');if(hl&&s.id===hl)li.className='new';
-    li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${nf(s.score)}</span><span>${CLS[s.cls]?CLS[s.cls].n:s.cls}</span><span class="sd">${s.seed}${s.day?` <span class="tag-day">${L('Tag','daily')}</span>`:''}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+s.room}</span>${dateSpan(s.date||s.id)}`;el.append(li)});
+    li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span>${CLS[s.cls]?CLS[s.cls].n:esc(s.cls)}</span><span class="sd">${esc(s.seed)}${s.day?` <span class="tag-day">${L('Tag','daily')}</span>`:''}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+(+s.room||'?')}</span>${dateSpan(s.date||s.id)}`;el.append(li)});
 }
 /* Gemeinsame Bestenliste über /api/scores (nur auf der Vercel-Seite erreichbar) */
 const API='/api/scores';let sending=false;
-const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function fetchGlobal(day){
   try{const r=await fetch(API+(day?'?day='+encodeURIComponent(day):''),{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)return null;const j=await r.json();return Array.isArray(j.scores)?j.scores:null}catch(e){return null}
 }
@@ -88,7 +88,7 @@ function renderGlobal(el,list,hl,kind){
   if(list==='loading')return note(L('Lade Bestenliste …','Loading leaderboard …'));
   if(list===null)return note(L('Die gemeinsame Bestenliste ist hier gerade nicht erreichbar.','The shared leaderboard can’t be reached from here right now.'));
   if(!list.length)return note(kind==='day'?L('Heute hat sich noch niemand eingetragen. Der erste Platz ist frei.','Nobody has submitted a run today. First place is free.'):L('Noch niemand eingetragen. Der erste Platz ist frei.','Nobody on the board yet. First place is free.'));
-  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(s.score)}</span><span class="nm">${esc(s.name)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
+  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span class="nm">${esc(s.name)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
 }
 function loadGlobal(el,hl){renderGlobal(el,'loading');fetchGlobal().then(l=>renderGlobal(el,l,hl))}
 function loadDaily(el,day,hl){renderGlobal(el,'loading',hl,'day');fetchGlobal(day).then(l=>renderGlobal(el,l,hl,'day'))}

@@ -1,8 +1,24 @@
 // Einfacher Test-Bot: spielt einen Run so lange, bis er endet oder maxSteps erreicht sind.
-// Er stürmt auf Gegner zu, schießt, heilt sich und nimmt immer das erste Upgrade.
+// Er läuft auf dem kürzesten Weg zu Gegnern, schießt, heilt sich und nimmt immer das erste Upgrade.
 // api: { G(), busy(), REACH(), VIS(), tileClick, stepPlayer, fireButton, endTurn, useItem, shootTargets, takePerk }
+import { canStep } from '../src/core/geometry.js';
 const RW = 17;
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+
+// Wegstrecke von einem Feld aus über begehbare Felder (wie Spieler und Gegner laufen, Gegner zählen nicht als Hindernis).
+// Damit läuft der Bot um Kisten herum, statt in Luftlinie hängen zu bleiben.
+function walkDist(map, from) {
+  const d = new Int16Array(map.length).fill(-1); const s = from.x + from.y * RW; d[s] = 0; const q = [s];
+  for (let qi = 0; qi < q.length; qi++) {
+    const i = q[qi], x = i % RW, y = (i / RW) | 0;
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      if (!dx && !dy) continue; const nx = x + dx, ny = y + dy, j = nx + ny * RW;
+      if (nx < 0 || ny < 0 || nx >= RW || j >= map.length || d[j] >= 0 || !canStep(map, x, y, nx, ny)) continue;
+      d[j] = d[i] + 1; q.push(j);
+    }
+  }
+  return d;
+}
 
 export async function runBot(api, wait, maxSteps = 4000) {
   let steps = 0, maxRoom = 1;
@@ -25,8 +41,9 @@ export async function runBot(api, wait, maxSteps = 4000) {
       if (p.mp > 0) {
         const vis = alive.filter(m => V[m.x + m.y * RW]); const tgt = vis[0] || alive[0];
         if (tgt) {
-          let best = -1, bd = cheb(tgt, p);
-          for (let i = 0; i < R.length; i++) { if (R[i] <= 0) continue; const x = i % RW, y = (i / RW) | 0; const d = cheb(tgt, { x, y }); if (d >= 1 && d < bd) { bd = d; best = i; } }
+          // Ziel: erreichbares Feld mit kürzestem echtem Weg zum Gegner (nicht das Gegnerfeld selbst)
+          const D = walkDist(G.map, tgt); let best = -1, bd = D[p.x + p.y * RW]; if (bd < 0) bd = 9999;
+          for (let i = 0; i < R.length; i++) { if (R[i] <= 0 || D[i] < 1) continue; if (D[i] < bd) { bd = D[i]; best = i; } }
           if (best >= 0) { api.tileClick(best % RW, (best / RW) | 0); continue; }
         }
       }

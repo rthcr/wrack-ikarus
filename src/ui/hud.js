@@ -4,6 +4,7 @@ import {L,nf} from '../core/i18n.js';
 import {cheb} from '../core/geometry.js';
 import {S,PERKS,atk,def,need,score,canInput,canSee,itemAt,unl,useItem,dropItem,takePerk} from '../core/game.js';
 import {on} from '../core/bus.js';
+import {esc} from './esc.js';
 import {iconURL,itemSpr,monSpr} from '../render/sprites.js';
 
 const $=id=>document.getElementById(id);
@@ -67,8 +68,10 @@ function renderHud(){
   if(!lk)lu.dataset.k='';
   const fb=$('fireBtn');fb.disabled=!(G.phase==='player'&&!busy);fb.classList.toggle('aim',!!G.target);
   $('fireName').textContent=G.target?L('Abbrechen','Cancel'):L('Schießen','Shoot');$('fireSub').textContent=G.target?'Esc':`${p.ammo<=0&&CLS[G.cls].side?CLS[G.cls].side:p.ammo+' '+L('Schuss','rounds')} · F`;
-  $('log').innerHTML=G.log.slice(0,9).map(l=>`<p class="${l.k}">${l.t}</p>`).join('');
+  // Log-Einträge können aus einem gespeicherten Run stammen: nur als Text einsetzen, Art nur aus bekannter Liste
+  $('log').innerHTML=G.log.slice(0,9).map(l=>`<p class="${LOGK.includes(l.k)?l.k:'info'}">${esc(l.t)}</p>`).join('');
 }
+const LOGK=['info','warn','good','hurt','dim','sep'];
 function flashStage(){const s=$('stage');s.classList.add('hurt');setTimeout(()=>s.classList.remove('hurt'),220)}
 
 on('change',renderHud);

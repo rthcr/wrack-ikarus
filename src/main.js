@@ -7,7 +7,7 @@ import {L} from './core/i18n.js';
 import {RW,RH} from './core/config.js';
 import {TS} from './render/sprites.js';
 import {normSeed,randomSeed} from './core/rng.js';
-import {loadRun,loadFilter,storeFilter} from './core/storage.js';
+import {loadRun,storeRun,loadFilter,storeFilter} from './core/storage.js';
 import * as actions from './core/game.js';
 import {S,restore,setSel} from './core/game.js';
 import {on,emit} from './core/bus.js';
@@ -82,7 +82,9 @@ function boot(){
   $('seedIn').value=m?normSeed(m[1]):randomSeed();
   if(saved&&saved.sel)setSel(saved.sel);
   renderClasses();
-  if(!restore(saved))showScreen('title');
+  // Ein beschädigter Spielstand darf den Start nicht verhindern: dann verwerfen und zum Titel
+  let ok=false;try{ok=restore(saved)}catch(e){console.warn('Gespeicherter Run verworfen:',e);ok=false}
+  if(!ok){storeRun(null);showScreen('title')}
 }
 boot();
 

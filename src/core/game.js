@@ -479,9 +479,37 @@ function finish(){
 /* ---------- Zusätzliche Einstiege für Oberfläche und Tests ---------- */
 function cancelTarget(){if(G&&G.target){G.target=null;log(AIM_CANCEL(),'dim');updateUI()}}
 function quitRun(){if(G&&!G.over){G.alive=false;G.quit=true;G.cause='quit';log(L('Einsatz abgebrochen.','Mission abandoned.'),'warn');finish()}}
-/* Gespeicherten Run fortsetzen. Gibt true zurück, wenn es geklappt hat. */
+/* Gespeicherten Run prüfen: Er kommt aus dem Browserspeicher und kann veraltet, beschädigt oder verändert sein.
+   Alles, was Logik und Darstellung später ungeprüft benutzen, muss hier die richtige Form haben. */
+const isInt=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b;
+const isNum=v=>typeof v==='number'&&isFinite(v);
+const onMap=o=>o&&isInt(o.x,0,RW-1)&&isInt(o.y,0,RH-1);
+function validRun(data){
+  try{
+    if(!data||data.screen!=='game')return false;
+    const G=data.G;if(!G||typeof G!=='object')return false;
+    if(typeof G.seed!=='string'||!/^[A-Z0-9]{1,10}$/.test(G.seed)||!CLS[G.cls])return false;
+    if(G.alive!==true||G.over||!isInt(G.room,1,ROOMS)||!['player','enemy','explore'].includes(G.phase))return false;
+    if(!Array.isArray(G.map)||G.map.length!==RW*RH||!G.map.every(t=>isInt(t,0,POD)))return false;
+    if(!Array.isArray(G.deco)||G.deco.length!==RW*RH||!G.deco.every(isNum))return false;
+    for(const k of ['round','rounds','kills','xpTotal','cleared','nid'])if(!isInt(G[k],0,1e6))return false;
+    if(!isNum(G.rs)||typeof G.path!=='string'||G.path.length>200)return false;
+    if(!Array.isArray(G.mons)||!G.mons.every(m=>m&&MON[m.t]&&onMap(m)&&isNum(m.hp)&&isNum(m.max)&&isInt(m.id,0,1e6)))return false;
+    if(!Array.isArray(G.items)||!G.items.every(i=>i&&IT[i.k]&&onMap(i)))return false;
+    if(!Array.isArray(G.exits)||!G.exits.every(e=>e&&['L','R','T','B'].includes(e.side)&&isInt(e.pos,0,RW)))return false;
+    if(!Array.isArray(G.log)||!G.log.every(l=>l&&typeof l.t==='string'&&typeof l.k==='string'))return false;
+    const p=G.p;if(!onMap(p))return false;
+    for(const k of ['hp','max','atk','def','lvl','xp','ammo','mp','act','cd','cd2','shield','invis','stim'])if(!isNum(p[k]))return false;
+    if(!Array.isArray(p.inv)||p.inv.length>INV||!p.inv.every(k=>IT[k]))return false;
+    if((p.wpn&&!(IT[p.wpn]&&IT[p.wpn].slot==='wpn'))||(p.arm&&!(IT[p.arm]&&IT[p.arm].slot==='arm')))return false;
+    if(G.offer!=null&&!(Array.isArray(G.offer)&&G.offer.every(k=>PERKS[k])))return false;
+    if(G.target!=null&&!(typeof G.target==='object'&&['shoot','nade'].includes(G.target.kind)))return false;
+    return true;
+  }catch(e){return false}
+}
+/* Gespeicherten Run fortsetzen. Gibt true zurück, wenn es geklappt hat; ein ungültiger Run wird verworfen. */
 function restore(data){
-  if(!(data&&data.G&&data.G.room&&data.screen==='game'&&data.G.alive&&!data.G.over&&data.G.map&&data.G.map.length===RW*RH))return false;
+  if(!validRun(data)){if(data)storeRun(null);return false}
   G=data.G;if(data.sel&&CLS[data.sel])sel=data.sel;finishing=false;busy=false;pendingEnd=false;hover=null;
   showScreen('game');
   // Im Gegnerzug gespeichert: Die Gegner ziehen komplett neu, sonst ließe sich ihr Zug durch Neuladen überspringen
@@ -501,5 +529,5 @@ const S={
 
 export {S,timing,PERKS,
   startRun,enterRoom,startRound,endTurn,stepPlayer,tileClick,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,
-  cancelTarget,quitRun,restore,setScreen,setSel,setHover,computeVis,updateUI,
+  cancelTarget,quitRun,restore,validRun,setScreen,setSel,setHover,computeVis,updateUI,
   atk,def,need,dodge,abCd,score,live,canInput,inCombat,monAt,visMonAt,itemAt,canSee,canShoot,shootable,shootTargets,nadeOk,pathTo,unl,lp};

@@ -10,6 +10,7 @@ Live auf Vercel, Code auf GitHub (`rthcr/wrack-ikarus`). Sprache in Code-Komment
 - `npm run build` – Produktionsbuild nach `dist/` (macht Vercel automatisch)
 - `npm run preview` – den Build lokal ansehen
 - `npm run check` – Test-Bot spielt 9 Runs direkt gegen die Spiellogik und meldet Abstürze oder hängende Runs
+  (mehr Runs: `node scripts/parity-check.mjs 100`)
 - `python3 scripts/audio/generate.py [name …]` – Soundeffekte und Musik neu erzeugen (braucht numpy, scipy, ffmpeg); ohne Namen alles
 - `python3 scripts/icons/make-icons.py` – Favicon (Helm) und Apple-Touch-Icon neu erzeugen (braucht Pillow)
 - `node scripts/og/make-og.mjs` – Vorschaubild für geteilte Links `public/og.png` aus der Titelszene (braucht Playwright)
@@ -62,6 +63,8 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Seed des Tages:** für alle gleich, wechselt um Mitternacht UTC. `dailySeed()` in `src/core/rng.js` und in `api/scores.js`
   müssen gleich rechnen. Ein Run mit dem heutigen Tages-Seed bekommt `G.day`; der Server trägt ihn zusätzlich in
   `wi:day:<Datum>` ein (heute oder gestern, läuft nach 8 Tagen ab). `GET /api/scores?day=JJJJ-MM-TT` liefert die Tagesliste.
+- **Gespeicherter Run:** `validRun()` in game.js prüft ihn vor dem Laden vollständig; ein ungültiger wird verworfen.
+  Neue Felder in `G` dort mit aufnehmen. Text aus Browserspeicher oder Server nur über `esc()` (ui/esc.js) in HTML einsetzen.
 - **Speicherschlüssel:** Bestenliste und LP teilen sich die Schlüssel mit der klassischen Fassung (Fortschritt gilt in beiden).
   Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v3`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
 - Nach Logikänderungen `npm run check` laufen lassen.

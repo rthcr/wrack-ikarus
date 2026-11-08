@@ -98,8 +98,10 @@ async function topList(board = BOARD, entries = ENTRIES) {
     .filter(Boolean);
 }
 
+// Client-IP: Vercel setzt diese Kopfzeilen selbst und überschreibt, was der Browser schickt (Schutz gegen gefälschte IPs).
 function clientKey(req) {
-  const ip = String(req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || 'unbekannt').split(',')[0].trim();
+  const h = req.headers;
+  const ip = String(h['x-vercel-forwarded-for'] || h['x-real-ip'] || h['x-forwarded-for'] || 'unbekannt').split(',')[0].trim();
   return 'wi:rl:' + crypto.createHash('sha256').update(ip).digest('hex').slice(0, 16);
 }
 
@@ -127,9 +129,9 @@ module.exports = async function handler(req, res) {
         try { body = JSON.parse(body); } catch (err) { body = null; }
       }
       const key = clientKey(req);
-      // Zähler mit Ablaufzeit in einem Rutsch anlegen (NX: nur wenn noch keiner läuft), dann hochzählen.
-      // So kann kein Zähler ohne Ablaufzeit übrig bleiben, der den Anschluss dauerhaft sperrt.
-      const [, count] = await redis([['SET', key, '0', 'EX', '60', 'NX'], ['INCR', key]]);
+      // Hochzählen (atomar in Redis) und bei jeder Anfrage die Ablaufzeit neu setzen: Es bleibt nie ein Zähler
+      // ohne Ablaufzeit übrig. Wer weiter sendet, verlängert seine Sperre; nach 60 s Ruhe ist der Zähler weg.
+      const [count] = await redis([['INCR', key], ['EXPIRE', key, '60']]);
       if (count > PER_MINUTE) {
         res.status(429).json({ error: 'Zu viele Einträge. Versuch es in einer Minute nochmal.' });
         return;
