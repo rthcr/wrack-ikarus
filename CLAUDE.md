@@ -77,6 +77,8 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
   welcher Klang zu welchem Gegner gehört, steht in `MOVE` (sfx.js).
 - Browser sperren Ton bis zum ersten Klick. Die Engine startet trotzdem beim Laden und plant die Musik ein;
   hörbar wird sie, sobald der Browser es erlaubt. Chrome meldet dabei „AudioContext was not allowed to start“ (Warnung, erwartet).
+  iOS/iPadOS: Zustand kann auch „interrupted“ sein (nicht nur „suspended“), freigeschaltet wird erst beim Loslassen
+  (touchend/click) – siehe `resume()` in engine.js und die Ereignisliste am Ende von sfx.js.
 - Spielfeldgröße: `fit()` in main.js misst die Höhe über `100svh` und ignoriert Höhenänderungen unter 120 px,
   damit das Feld beim Scrollen auf iPad/iPhone (ein- und ausfahrende Leisten) nicht springt.
 - Steuerung: Neue Taste oder Bedienung immer auch in `ROWS` in `src/ui/controls.js` eintragen. Elemente mit Klasse `.desk`

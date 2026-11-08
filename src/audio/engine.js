@@ -14,6 +14,8 @@ export function init(){
   master=ctx.createGain();master.connect(ctx.destination);
   sfxBus=ctx.createGain();sfxBus.gain.value=0;sfxBus.connect(master);
   musicBus=ctx.createGain();musicBus.gain.value=0;musicBus.connect(master);
+  // Läuft der Ton wieder (auch von selbst, z. B. wenn iOS eine Unterbrechung beendet), Gesamtlautstärke zurückholen
+  ctx.addEventListener('statechange',()=>{if(ctx.state==='running')restoreMaster()});
   return ctx;
 }
 /* Lautstärken 0..1 (Regler); quadratisch, damit der Regler sich gleichmäßig anfühlt */
@@ -27,7 +29,17 @@ export function onState(cb){if(ctx)ctx.addEventListener('statechange',()=>cb(ctx
 export const context=()=>ctx;
 export const sfxOut=()=>sfxBus;
 
-export function resume(){if(ctx&&ctx.state==='suspended')ctx.resume().catch(()=>{})}
+// Anhalten gibt es als "suspended", iOS/iPadOS kennt zusätzlich "interrupted" (z. B. nach App-Wechsel
+// oder in der Home-Bildschirm-App). Beides lässt sich mit resume() fortsetzen.
+const paused=()=>ctx&&ctx.state!=='running'&&ctx.state!=='closed';
+export function resume(){
+  if(!paused())return;
+  // iOS schaltet die Audiositzung erst frei, wenn innerhalb der Nutzeraktion etwas abgespielt wird: ein stiller Mini-Ton
+  try{const b=ctx.createBuffer(1,1,ctx.sampleRate),s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start(0)}catch(e){}
+  ctx.resume().then(restoreMaster).catch(()=>{});
+}
+// Nach einem Ausblenden (Tab im Hintergrund) die Gesamtlautstärke wieder hochfahren, sobald die Seite sichtbar ist
+function restoreMaster(){if(master&&!document.hidden&&master.gain.value<.999)ramp(master.gain,1,.4)}
 export function suspend(){if(ctx&&ctx.state==='running')ctx.suspend().catch(()=>{})}
 
 /* Weich aus- und einblenden statt hart anhalten (sonst knackt es, wenn das Signal mitten in der Schwingung abreißt).
@@ -42,7 +54,7 @@ export function fadeOutAndSuspend(sec=.45,stillSuspend=()=>true){
 export function resumeAndFadeIn(sec=.7){
   if(!ctx)return;clearTimeout(suspendTimer);
   const go=()=>ramp(master.gain,1,sec);
-  if(ctx.state==='suspended'){master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setValueAtTime(0,ctx.currentTime);ctx.resume().then(go).catch(()=>{})}
+  if(paused()){master.gain.cancelScheduledValues(ctx.currentTime);master.gain.setValueAtTime(0,ctx.currentTime);ctx.resume().then(go).catch(()=>{})}
   else go();
 }
 export const masterLevel=()=>master?master.gain.value:0;

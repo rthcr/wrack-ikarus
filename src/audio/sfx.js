@@ -95,9 +95,10 @@ on('change',updateMusic);
 on('screen',()=>{last='';updateMusic()});
 
 boot();
-// Erste Berührung oder Taste irgendwo auf der Seite schaltet den Ton frei
-document.addEventListener('pointerdown',unlock,{capture:true});
-document.addEventListener('keydown',unlock,{capture:true});
+// Erste Berührung oder Taste irgendwo auf der Seite schaltet den Ton frei.
+// Auf Touch-Geräten zählt für den Browser erst das Loslassen (touchend/pointerup/click) als Nutzeraktion,
+// pointerdown allein reicht dort nicht – daher alle Ereignisse.
+for(const ev of ['pointerdown','pointerup','touchend','click','keydown'])document.addEventListener(ev,unlock,{capture:true,passive:true});
 // Im Hintergrund-Tab schweigen
 document.addEventListener('visibilitychange',()=>{if(document.hidden)E.fadeOutAndSuspend(.45,()=>document.hidden);else E.resumeAndFadeIn(.7)});
 
