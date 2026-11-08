@@ -1,7 +1,7 @@
 // Raumgenerator: baut aus Seed, Raumnummer und Türweg immer denselben Raum.
 // Aus der klassischen Version übernommen, Inhalt unverändert.
 
-import {RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,POD,D8,OPP,ROOMNAMES,RTABLE,ELITE,SHAPES,tierOf} from './config.js';
+import {RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,POD,D8,OPP,ROOMNAMES,RTABLE,ELITE,SHAPES,tierOf,bossRoomName} from './config.js';
 import {h32,makeRng,wpick} from './rng.js';
 import {canStep} from './geometry.js';
 
@@ -71,7 +71,7 @@ function genRoom(seed,idx,path,entry){
     for(let k=0;k<n;k++){const p=take();if(p)mons.push({t:wpick(RTABLE[tier],r),x:p.x,y:p.y})}
     if(idx>=2&&r()<.25){elite=true;const p=take();if(p)mons.push({t:ELITE[tier],x:p.x,y:p.y,elite:1})}
   }
-  return{map,deco,start,mons,exits,entry,boss,elite,pod,name:boss?'Brutkammer':pick(ROOMNAMES[tier])};
+  return{map,deco,start,mons,exits,entry,boss,elite,pod,name:boss?bossRoomName():pick(ROOMNAMES[tier])};
 }
 
 export {sideMid,sideRange,sideTile,toward,bfsGrid,genRoom};

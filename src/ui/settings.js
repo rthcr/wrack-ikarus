@@ -1,6 +1,7 @@
 // Einstellungen: Lautstärke und Stumm für Musik und Effekte getrennt, Bildfilter.
 // Außerdem der Knopf "Ton einschalten", solange der Browser Ton noch blockiert.
 import {on} from '../core/bus.js';
+import {L} from '../core/i18n.js';
 import {unlock,play,setSound,isSoundOn,setMusic,isMusicOn,setVolume,getVolume,audioState} from '../audio/sfx.js';
 
 const $=id=>document.getElementById(id);
@@ -10,12 +11,12 @@ function render(){
   for(const [kind,muted,label] of [['music',!isMusicOn(),'mus'],['sfx',!isSoundOn(),'sfx']]){
     const v=getVolume(kind);
     $(label+'Vol').value=v;$(label+'Out').textContent=v+' %';
-    const b=$(label+'Mute');b.setAttribute('aria-pressed',muted);b.classList.toggle('muted',muted);b.textContent='Stumm';
-    b.setAttribute('aria-label',(label==='mus'?'Musik':'Effekte')+(muted?' wieder einschalten':' stumm schalten'));
+    const b=$(label+'Mute');b.setAttribute('aria-pressed',muted);b.classList.toggle('muted',muted);b.textContent=L('Stumm','Mute');
+    b.setAttribute('aria-label',label==='mus'?(muted?L('Musik wieder einschalten','Unmute music'):L('Musik stumm schalten','Mute music')):(muted?L('Effekte wieder einschalten','Unmute effects'):L('Effekte stumm schalten','Mute effects')));
     $(label+'Vol').closest('.setrow').classList.toggle('is-muted',muted);
   }
   const st=audioState();
-  $('audioHint').textContent=st==='running'?'':'Dein Browser spielt Ton erst nach einem Klick ab. Klick irgendwo auf die Seite.';
+  $('audioHint').textContent=st==='running'?'':L('Dein Browser spielt Ton erst nach einem Klick ab. Klick irgendwo auf die Seite.','Your browser only plays sound after a click. Click anywhere on the page.');
 }
 function chip(){
   const blocked=audioState()!=='running'&&(isMusicOn()||isSoundOn());
@@ -35,4 +36,5 @@ $('sfxMute').onclick=()=>{setSound(!isSoundOn());render();chip();if(isSoundOn())
 
 $('audioUnlock').onclick=()=>{unlock();setTimeout(chip,150)};
 on('audiostate',chip);
+on('lang',()=>{if(dlg.open)render()});
 chip();

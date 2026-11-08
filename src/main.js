@@ -1,6 +1,9 @@
 // Einstieg: Oberfläche, Ton, Eingabe und Phaser zusammenstecken, dann gespeicherten Run fortsetzen.
 import Phaser from 'phaser';
 import './style.css';
+// Sprache zuerst festlegen, damit alle folgenden Module gleich richtig beschriften
+import './ui/lang.js';
+import {L} from './core/i18n.js';
 import {RW,RH} from './core/config.js';
 import {TS} from './render/sprites.js';
 import {normSeed,randomSeed} from './core/rng.js';
@@ -31,7 +34,7 @@ const game=new Phaser.Game({
   audio:{noAudio:true},          // Ton kommt vorerst aus audio/sfx.js
   scale:{mode:Phaser.Scale.NONE,zoom:2},
   scene:[GameScene],
-  callbacks:{postBoot:g=>{g.canvas.id='cv';g.canvas.setAttribute('aria-label','Spielfeld');fit(true)}},
+  callbacks:{postBoot:g=>{g.canvas.id='cv';g.canvas.setAttribute('aria-label',L('Spielfeld','Game board'));fit(true)}},
 });
 
 /* Sichthöhe ohne die beim Scrollen ein- und ausfahrenden Browserleisten (iPad, iPhone):
@@ -65,11 +68,12 @@ let filterOn=loadFilter();
 game.registry.set('filter',filterOn);
 function applyFilter(){
   $('stage').classList.toggle('crt',filterOn);
-  $('fxBtn').textContent=filterOn?'an':'aus';$('fxBtn').setAttribute('aria-pressed',filterOn);$('fxBtn').classList.toggle('on',filterOn);
+  $('fxBtn').textContent=filterOn?L('an','on'):L('aus','off');$('fxBtn').setAttribute('aria-pressed',filterOn);$('fxBtn').classList.toggle('on',filterOn);
   game.registry.set('filter',filterOn);emit('filter',filterOn);
 }
 $('fxBtn').onclick=()=>{filterOn=!filterOn;storeFilter(filterOn);applyFilter()};
 applyFilter();
+on('lang',()=>{applyFilter();if(game.canvas)game.canvas.setAttribute('aria-label',L('Spielfeld','Game board'))});
 
 function boot(){
   const saved=loadRun();

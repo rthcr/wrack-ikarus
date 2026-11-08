@@ -1,6 +1,6 @@
 # Wrack Ikarus
 
-Sci-Fi-Roguelike im Browser (Deutsch). Rundenbasiert: 8 Kampfräume, dann die Brutkammer mit Boss.
+Sci-Fi-Roguelike im Browser (Deutsch und Englisch, Umschalter oben rechts). Rundenbasiert: 8 Kampfräume, dann die Brutkammer mit Boss.
 Live auf Vercel, Code auf GitHub (`rthcr/wrack-ikarus`). Sprache in Code-Kommentaren, Texten und Commits: Deutsch.
 
 ## Befehle
@@ -27,6 +27,7 @@ src/core/             Spiellogik, OHNE DOM und OHNE Phaser (läuft auch in Node,
   roomgen.js          Raumgenerator
   storage.js          localStorage: Bestenliste, LP, Run, Name, Ton/Musik an-aus, Lautstärken, Bildfilter
   bus.js              Ereignis-Bus zwischen Logik und Darstellung
+  i18n.js             Sprache de/en: L('deutsch','english'), nf() für Zahlen, localize() für Datentabellen
   game.js             Regeln, Runden, Kampf, Items, Gegner-KI
 src/render/           Darstellung
   GameScene.js        Phaser-Szene: Raum, Figuren (gleiten, hüpfen, Ausfallschritt), Licht und Dunkelheit,
@@ -35,7 +36,7 @@ src/render/           Darstellung
   sprites.js          malt art.js auf Canvas, erzeugt die 2. Animationsphase (Atmen/Schweben/Blinken), TS = 16
   tiles.js            Kacheln in 16×16 (Böden je Deck, Wände, Kisten, Konsolen, Türen, Kapsel) und ihre Lichtquellen
   titleScene.js       Titelbild „Station im Orbit“ (eigenständig, ohne Importe; auch für og.png genutzt)
-src/ui/               DOM-Oberfläche: hud.js (Statuskonsole), screens.js (Titel/Ende/Bestenlisten), input.js (Tastatur, Knöpfe),
+src/ui/               DOM-Oberfläche: lang.js (Sprachwahl, englische Texte für index.html), hud.js (Statuskonsole), screens.js (Titel/Ende/Bestenlisten), input.js (Tastatur, Knöpfe),
                       settings.js (Menü Einstellungen: Lautstärke/Stumm Musik und Effekte, Bildfilter; Knopf „Ton einschalten“),
                       titleArt.js (animiert das Titelbild, nur solange der Startbildschirm sichtbar ist),
                       controls.js (Steuerungstabelle, füllt alle [data-controls]: Startbildschirm und aufklappbar im Spiel),
@@ -81,6 +82,11 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
   (touchend/click) – siehe `resume()` in engine.js und die Ereignisliste am Ende von sfx.js.
 - Spielfeldgröße: `fit()` in main.js misst die Höhe über `100svh` und ignoriert Höhenänderungen unter 120 px,
   damit das Feld beim Scrollen auf iPad/iPhone (ein- und ausfahrende Leisten) nicht springt.
+- **Sprache:** Jeden sichtbaren Text gibt es auf Deutsch und Englisch. Im Code `L('…','…')` aus `core/i18n.js`;
+  Namen in config.js (Klassen, Gegner, Items, Räume) haben ihr Englisch in `EN` dort, Upgrades in game.js über `localize`.
+  Feste Texte in index.html bekommen `data-t="schlüssel"` (bzw. `data-t-aria`, `data-t-ph`) und den englischen Text in `EN` in `ui/lang.js`.
+  Beim Umschalten kommt das Ereignis `lang`; Module, die Text zeichnen, hören darauf. Link mit `?lang=en` öffnet Englisch.
+  Startsprache: gespeicherte Wahl (`wrack-ikarus-lang`), sonst Browsersprache. Die klassische Fassung bleibt deutsch.
 - Steuerung: Neue Taste oder Bedienung immer auch in `ROWS` in `src/ui/controls.js` eintragen. Elemente mit Klasse `.desk`
   sind auf Touch-Geräten und unter 860 px Breite ausgeblendet.
 - Fremde Grafiken, Sounds oder Musik nach `public/assets/` legen und mit Quelle und Lizenz in `CREDITS.md` eintragen.

@@ -23,6 +23,10 @@ function storeSound(on){try{localStorage.setItem(TKEY,on?'1':'0')}catch(e){}}
 const FKEY='wrack-ikarus-filter';
 function loadFilter(){try{return localStorage.getItem(FKEY)!=='0'}catch(e){return true}}
 function storeFilter(on){try{localStorage.setItem(FKEY,on?'1':'0')}catch(e){}}
+/* Sprache: 'de' oder 'en'; null = noch nie gewählt (dann entscheidet die Browsersprache) */
+const LANGKEY='wrack-ikarus-lang';
+function loadLang(){try{const v=localStorage.getItem(LANGKEY);return v==='de'||v==='en'?v:null}catch(e){return null}}
+function storeLang(l){try{localStorage.setItem(LANGKEY,l)}catch(e){}}
 
 const MKEY='wrack-ikarus-musik';
 function loadMusic(){try{return localStorage.getItem(MKEY)!=='0'}catch(e){return true}}
@@ -32,4 +36,4 @@ const VKEY='wrack-ikarus-lautstaerke';
 function loadVolumes(){try{const v=JSON.parse(localStorage.getItem(VKEY)||'null');if(v&&typeof v==='object')return{sfx:+v.sfx||0,music:+v.music||0}}catch(e){}return{sfx:80,music:70}}
 function storeVolumes(v){try{localStorage.setItem(VKEY,JSON.stringify(v))}catch(e){}}
 
-export {loadVolumes,storeVolumes,loadMusic,storeMusic,loadFilter,storeFilter,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};
+export {loadVolumes,storeVolumes,loadMusic,storeMusic,loadFilter,storeFilter,loadLang,storeLang,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};

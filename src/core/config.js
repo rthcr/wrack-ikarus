@@ -1,5 +1,6 @@
 // Konstanten und Datentabellen von Wrack Ikarus.
-// Aus der klassischen Version übernommen, Inhalt unverändert.
+// Aus der klassischen Version übernommen, Inhalt unverändert. Englische Namen und Texte stehen unten in EN.
+import {L,localize} from './i18n.js';
 
 const RW=17,RH=13,T=8,ROOMS=9,INV=6;
 const WALL=0,FLOOR=1,BLOCK=2,DOOR=3,EXIT=4,POD=5;
@@ -55,4 +56,47 @@ const IT={
 const ITABLE={1:{med:4,cell:4,nade:1,wrench:2,vest:2,stim:1},2:{med:4,cell:3,nade:2,blade:2,suit:1,vest:1,stim:1,phase:1,scan:1},3:{med:5,cell:3,nade:2,cutter:2,exo:1,suit:1,stim:1,phase:1},4:{med:3,cell:2,nade:2}};
 const SHAPES=[[[0,0]],[[0,0],[1,0]],[[0,0],[0,1]],[[0,0],[1,0],[0,1],[1,1]],[[0,0],[1,0],[2,0]],[[0,0],[0,1],[0,2]],[[0,0],[1,0],[0,1]],[[0,0],[1,0],[1,1]]];
 
+/* ---------- Englische Fassung: gleiche Schlüssel, gleiche Reihenfolge (Raumnamen werden per Index gewählt) ---------- */
+const EN={
+ TIERNAME:['Cargo Deck','Living Quarters','Reactor Ring','Brood Chamber'],
+ ROOMNAMES:{1:['Cargo Airlock','Container Store','Loading Bay','Maintenance Shaft','Spare Parts Store'],2:['Mess Hall','Crew Bunks','Med Bay','Hydroponics Tanks','Lab B','Recreation Module'],3:['Reactor Control','Coolant Pumps','Armory','Comms Room','Turbine Hall']},
+ CLS:{
+  marine:{n:'Marine',ab:'Barrage',abd:'hits all adjacent enemies with attack +3. Cooldown 3 rounds.',gear:'Start: Med Injector, 6 rounds'},
+  tech:{n:'Technician',ab:'EMP Pulse',abd:'stuns all visible enemies for 2 rounds, machines take 6 damage. Cooldown 4 rounds.',gear:'Start: Med Injector, Motion Tracker, 4 rounds'},
+  scout:{n:'Scout',ab:'Cloak Field',abd:'invisible for 2 rounds, enemies lose your trail. Moves 4 tiles, dodges 15 %.',side:'Needle Pistol',gear:'Start: Med Injector, Phase Capsule, 5 rounds, Needle Pistol (needs no ammo, weak)'}},
+ UNLD:{
+  marine:['Starts with +5 HP','Barrage: cooldown 2','Frag Grenade (T): 8 damage in a 3×3 area, up to 5 tiles, cooldown 4'],
+  tech:['Starts with an Energy Cell (+4 ammo)','EMP stuns for 3 rounds','Shield Generator (T): no damage from enemies for 2 rounds, cooldown 5'],
+  scout:['Needle Pistol deals full damage','Cloak Field lasts 3 rounds','Ambush: attacks out of the cloak deal double damage']},
+ AB2:{marine:{n:'Frag Grenade'},tech:{n:'Shield Generator'}},
+ MON:{
+  larva:{nom:'The larva',acc:'the larva',n:'Larva'},
+  drone:{nom:'The maintenance drone',acc:'the maintenance drone',n:'Maintenance Drone'},
+  mutant:{nom:'The mutated technician',acc:'the mutated technician',n:'Mutated Technician'},
+  turret:{nom:'The gun turret',acc:'the gun turret',n:'Gun Turret'},
+  hunter:{nom:'The xeno hunter',acc:'the xeno hunter',n:'Xeno Hunter'},
+  walker:{nom:'The armored walker',acc:'the armored walker',n:'Armored Walker'},
+  queen:{nom:'The Brood Mother',acc:'the Brood Mother',n:'Brood Mother'}},
+ IT:{
+  med:{n:'Med Injector',d:'heals 12 HP'},cell:{n:'Energy Cell',d:'+4 ammo'},nade:{n:'Frag Grenade',d:'pick a target: 8 damage in a 3×3 area'},
+  stim:{n:'Combat Stim',d:'+3 attack for 3 rounds'},scan:{n:'Motion Tracker',d:'shows where every enemy in the room is'},phase:{n:'Phase Capsule',d:'teleports you away from the enemies'},
+  wrench:{n:'Pipe Wrench'},blade:{n:'Vibro Blade'},cutter:{n:'Plasma Cutter'},vest:{n:'Protective Vest'},suit:{n:'Combat Suit'},exo:{n:'Exo Armor'}},
+};
+/* Raumnamen sprachunabhängig: Im Run steht der Name, mit dem der Raum erzeugt wurde (Deutsch oder Englisch). */
+const ROOM_DE=Object.fromEntries(Object.entries(ROOMNAMES).map(([k,a])=>[k,a.slice()])),BOSS_ROOM={de:'Brutkammer',en:'Brood Chamber'};
+function roomTitle(name){
+  if(name===BOSS_ROOM.de||name===BOSS_ROOM.en)return L(BOSS_ROOM.de,BOSS_ROOM.en);
+  for(const t in ROOM_DE){let i=ROOM_DE[t].indexOf(name);if(i<0)i=EN.ROOMNAMES[t].indexOf(name);if(i>=0)return L(ROOM_DE[t][i],EN.ROOMNAMES[t][i])}
+  return name;
+}
+const bossRoomName=()=>L(BOSS_ROOM.de,BOSS_ROOM.en);
+/* Todesursache: gespeichert als Gegner-Schlüssel bzw. 'nade'; ältere Einträge enthalten noch deutschen Text */
+function causeName(c){
+  if(MON[c])return MON[c].nom;
+  if(c==='nade')return L('Die eigene Granate','Your own grenade');
+  return c||'';
+}
+localize({TIERNAME,ROOMNAMES,CLS,UNLD,AB2,MON,IT},EN);
+
+export {roomTitle,bossRoomName,causeName};
 export {RW,RH,T,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,TIERNAME,ROOMNAMES,FLOORTINT,ALPH,tierOf,CLS,UNL,UNLD,AB2,MON,RTABLE,ELITE,IT,ITABLE,SHAPES};

@@ -2,6 +2,7 @@
 import {S,startRun,endTurn,stepPlayer,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,cancelTarget,quitRun,setSel,canInput,inCombat} from '../core/game.js';
 import {normSeed,randomSeed} from '../core/rng.js';
 import {unlock} from '../audio/sfx.js';
+import {L} from '../core/i18n.js';
 import {showScreen,renderClasses,drawPreview,sendScore} from './screens.js';
 
 const $=id=>document.getElementById(id);
@@ -35,7 +36,7 @@ $('endBtn').onclick=()=>{if(canInput()&&inCombat())endTurn()};
 $('fireBtn').onclick=()=>fireButton(false);$('abBtn').onclick=ability;$('ab2Btn').onclick=ability2;
 let quitArmed=null;
 $('quitBtn').onclick=()=>{const b=$('quitBtn');
-  if(!quitArmed){b.textContent='Wirklich abbrechen?';b.classList.add('warn');quitArmed=setTimeout(()=>{quitArmed=null;b.textContent='Run abbrechen';b.classList.remove('warn')},3000);return}
+  if(!quitArmed){b.textContent=L('Wirklich abbrechen?','Really abandon?');b.classList.add('warn');quitArmed=setTimeout(()=>{quitArmed=null;b.textContent=L('Run abbrechen','Abandon run');b.classList.remove('warn')},3000);return}
   clearTimeout(quitArmed);quitArmed=null;quitRun()};
 $('rollBtn').onclick=()=>{$('seedIn').value=randomSeed();drawPreview()};
 $('seedIn').addEventListener('input',()=>{const v=normSeed($('seedIn').value);if(v!==$('seedIn').value)$('seedIn').value=v;drawPreview()});
@@ -45,7 +46,7 @@ $('sendBtn').onclick=sendScore;
 $('againBtn').onclick=()=>{unlock();const e=S.lastEntry;if(e)startRun(e.seed,e.cls)};
 $('newBtn').onclick=()=>{const e=S.lastEntry;if(e){$('seedIn').value=e.seed;setSel(e.cls);renderClasses()}showScreen('title')};
 $('copyBtn').onclick=()=>{const inp=$('shareTxt'),b=$('copyBtn');
-  const fallback=()=>{inp.focus();inp.select();b.textContent='Markiert, jetzt kopieren'};
-  try{navigator.clipboard.writeText(inp.value).then(()=>{b.textContent='Kopiert';setTimeout(()=>b.textContent='Kopieren',1600)},fallback)}catch(e){fallback()}};
+  const fallback=()=>{inp.focus();inp.select();b.textContent=L('Markiert, jetzt kopieren','Selected, copy now')};
+  try{navigator.clipboard.writeText(inp.value).then(()=>{b.textContent=L('Kopiert','Copied');setTimeout(()=>b.textContent=L('Kopieren','Copy'),1600)},fallback)}catch(e){fallback()}};
 
 export {startFromTitle};
