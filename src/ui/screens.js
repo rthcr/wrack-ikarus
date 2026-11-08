@@ -15,7 +15,7 @@ const TOP_END=()=>L('Einsatzbericht','Mission report');
 /* LP = alle je mit der Klasse gesammelten EP; auf Englisch VP (veteran points) */
 const LP=()=>L('LP','VP');
 /* Fehlermeldungen des Servers kommen auf Deutsch; auf Englisch übersetzen */
-const SERVER_EN={'Ungültige Daten.':'Invalid data.','Bitte gib einen Namen ein.':'Please enter a name.','Ungültiger Seed.':'Invalid seed.','Ungültige Klasse.':'Invalid class.','Ungültige Werte.':'Invalid values.','Ungültiges Datum.':'Invalid date.',
+const SERVER_EN={'Ungültige Daten.':'Invalid data.','Bitte gib einen Namen ein.':'Please enter a name.','Ungültiger Seed.':'Invalid seed.','Ungültige Klasse.':'Invalid class.','Ungültige Werte.':'Invalid values.','Ungültiges Datum.':'Invalid date.','Dieser Run kann nicht geprüft werden.':'This run cannot be verified.',
   'Dieser Run ist nicht plausibel.':'This run is not plausible.','Die Datenbank ist nicht mit dem Projekt verbunden.':'The database is not connected to the project.',
   'Zu viele Einträge. Versuch es in einer Minute nochmal.':'Too many entries. Try again in a minute.','Die Bestenliste ist gerade nicht erreichbar.':'The leaderboard is unavailable right now.'};
 const serverMsg=m=>m&&L(m,SERVER_EN[m]||'The server rejected the entry.');
@@ -100,7 +100,7 @@ async function sendScore(){
   storeName(name);
   sending=true;$('sendBtn').disabled=true;sendMsg(L('Wird eingetragen …','Submitting …'));
   try{
-    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,seed:e.seed,cls:e.cls,win:e.win,room:e.room,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,day:e.day||undefined})});
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,seed:e.seed,cls:e.cls,win:e.win,room:e.room,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,day:e.day||undefined,lp0:e.lp0,rec:e.rec||undefined})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){const x=new Error(serverMsg(j.error)||L('Der Server antwortet nicht','The server is not responding'));x.server=1;throw x}
     e.sent=true;e.gid=j.id;

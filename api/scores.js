@@ -1,7 +1,8 @@
 // Gemeinsame Bestenliste für Wrack Ikarus.
 // GET  /api/scores            -> Top 20 aller Zeiten
 // GET  /api/scores?day=JJJJ-MM-TT -> Top 20 des Seeds des Tages
-// POST /api/scores            -> neuen Run eintragen (Punkte werden hier neu berechnet);
+// POST /api/scores            -> neuen Run eintragen. Der Server spielt den Run aus seiner Aufzeichnung (rec) nach
+//                                und trägt nur ein, was dabei herauskommt (src/core/replay.js);
 //                                mit day und dem passenden Tages-Seed zusätzlich in die Tagesliste
 // Speicher: Upstash Redis über die REST-API (Variablen KV_REST_API_URL / KV_REST_API_TOKEN).
 
@@ -41,6 +42,18 @@ function calcScore(e) {
 }
 
 const isInt = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+
+// Nachspielen: Die Spiellogik ist ein einzelnes Modul mit globalem Zustand, daher immer nur ein Run gleichzeitig.
+let replayModule = null, queue = Promise.resolve();
+function replay(run) {
+  const job = queue.then(async () => {
+    if (!replayModule) replayModule = await import('../src/core/replay.js');
+    return replayModule.replayRun(run);
+  });
+  queue = job.catch(() => {});
+  return job;
+}
+const SAME = ['seed', 'cls', 'win', 'room', 'cleared', 'rounds', 'kills', 'lvl', 'xp'];
 
 // Seed des Tages. Muss mit dailySeed() in src/core/rng.js übereinstimmen.
 const ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -139,6 +152,19 @@ module.exports = async function handler(req, res) {
       const e = validate(body);
       if (typeof e === 'string') {
         res.status(400).json({ error: e });
+        return;
+      }
+      // Run nachspielen: Nur was dabei wirklich herauskommt, darf in die Liste
+      if (!Array.isArray(body.rec)) {
+        res.status(400).json({ error: 'Dieser Run kann nicht geprüft werden.' });
+        return;
+      }
+      const t0 = Date.now();
+      const r = await replay({ seed: e.seed, cls: e.cls, lp0: body.lp0, day: isDayFormat(body.day) ? body.day : null, rec: body.rec });
+      const diff = r.ok ? SAME.filter((k) => r.entry[k] !== e[k]) : [];
+      if (!r.ok || diff.length) {
+        console.warn('Run abgelehnt', e.seed, e.cls, r.ok ? diff.map((k) => `${k}: ${e[k]} ≠ ${r.entry[k]}`).join(', ') : r.reason, `${Date.now() - t0} ms`);
+        res.status(400).json({ error: 'Dieser Run ist nicht plausibel.' });
         return;
       }
       const id = Date.now().toString(36) + crypto.randomBytes(3).toString('hex');

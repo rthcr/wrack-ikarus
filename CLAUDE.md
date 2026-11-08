@@ -11,6 +11,8 @@ Live auf Vercel, Code auf GitHub (`rthcr/wrack-ikarus`). Sprache in Code-Komment
 - `npm run preview` – den Build lokal ansehen
 - `npm run check` – Test-Bot spielt 9 Runs direkt gegen die Spiellogik und meldet Abstürze oder hängende Runs
   (mehr Runs: `node scripts/parity-check.mjs 100`)
+- `npm run check:replay` – Bot spielt 30 Runs mit zufälligem Neuladen, jeder Run wird aus seiner Aufzeichnung nachgespielt;
+  Original und Nachspielen müssen übereinstimmen (Pflicht nach jeder Logikänderung)
 - `python3 scripts/audio/generate.py [name …]` – Soundeffekte und Musik neu erzeugen (braucht numpy, scipy, ffmpeg); ohne Namen alles
 - `python3 scripts/icons/make-icons.py` – Favicon (Helm) und Apple-Touch-Icon neu erzeugen (braucht Pillow)
 - `node scripts/og/make-og.mjs` – Vorschaubild für geteilte Links `public/og.png` aus der Titelszene (braucht Playwright)
@@ -29,7 +31,8 @@ src/core/             Spiellogik, OHNE DOM und OHNE Phaser (läuft auch in Node,
   storage.js          localStorage: Bestenliste, LP, Run, Name, Ton/Musik an-aus, Lautstärken, Bildfilter
   bus.js              Ereignis-Bus zwischen Logik und Darstellung
   i18n.js             Sprache de/en: L('deutsch','english'), nf() für Zahlen, localize() für Datentabellen
-  game.js             Regeln, Runden, Kampf, Items, Gegner-KI
+  game.js             Regeln, Runden, Kampf, Items, Gegner-KI; zeichnet jede angenommene Eingabe in G.rec auf
+  replay.js           spielt einen Run aus G.rec nach (für den Server, ohne DOM)
 src/render/           Darstellung
   GameScene.js        Phaser-Szene: Raum, Figuren (gleiten, hüpfen, Ausfallschritt), Licht und Dunkelheit,
                       Markierungen, Partikel, Kamerawackeln
@@ -60,6 +63,14 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Determinismus:** Gleicher Seed und gleiche Eingaben müssen denselben Run ergeben. Zufall im Spiel nur über `rnd()` (Kampf)
   bzw. den Raumgenerator, nie `Math.random()` in der Spiellogik.
 - **Punkte:** `score()` in `src/core/game.js` und `calcScore()` in `api/scores.js` müssen gleich rechnen, sonst lehnt der Server Einträge ab.
+- **Nachspiel-Prüfung:** Der Server trägt nur Runs ein, die er aus der Aufzeichnung (`G.rec`) selbst nachspielen kann
+  und die dabei genau die gemeldeten Werte ergeben. Folgen für die Spiellogik:
+  - Eingaben von außen nur über die exportierten Funktionen (sie sind über `ACTIONS` aufgezeichnet). Eine neue Eingabe
+    braucht ein neues Kürzel in `ACTIONS` und in `CODES` (replay.js). Interne Aufrufe nehmen die unverpackten Funktionen.
+  - Nichts im Spielablauf darf von Uhrzeit, Zufall außerhalb von `rnd()`, Sprache oder Browser abhängen
+    (Texte ja, Entscheidungen nein). Verzögerungen nur über `sleep`/`later` in game.js.
+  - Neuladen wird als Ereignis `R` mit Prüfwert (`runHash`, ohne Log und Raumnamen) aufgezeichnet.
+  - Die klassische Fassung zeichnet nicht auf; ihre Einträge lehnt der Server ab.
 - **Seed des Tages:** für alle gleich, wechselt um Mitternacht UTC. `dailySeed()` in `src/core/rng.js` und in `api/scores.js`
   müssen gleich rechnen. Ein Run mit dem heutigen Tages-Seed bekommt `G.day`; der Server trägt ihn zusätzlich in
   `wi:day:<Datum>` ein (heute oder gestern, läuft nach 8 Tagen ab). `GET /api/scores?day=JJJJ-MM-TT` liefert die Tagesliste.

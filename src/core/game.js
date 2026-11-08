@@ -9,10 +9,12 @@ import {saveScore,addLP,lp,storeRun} from './storage.js';
 import {emit} from './bus.js';
 import {L,localize} from './i18n.js';
 
-/* Zeitsteuerung: scale 0 lässt Tests ohne Wartezeiten laufen. */
-const timing={scale:1};
-const sleep=ms=>new Promise(r=>setTimeout(r,ms*timing.scale));
-const later=(fn,ms)=>setTimeout(fn,ms*timing.scale);
+/* Zeitsteuerung: scale 0 lässt Tests und das Nachspielen auf dem Server ohne Wartezeiten laufen
+   (Pausen werden dann sofort fortgesetzt). save:false spart beim Nachspielen das Speichern. */
+const timing={scale:1,save:true};
+const sleep=ms=>timing.scale?new Promise(r=>setTimeout(r,ms*timing.scale)):Promise.resolve();
+/* Verzögerte Aufgabe; sie verfällt, wenn inzwischen ein anderer Run läuft (neu gestartet oder neu geladen) */
+const later=(fn,ms)=>{const run=G;setTimeout(()=>{if(G===run)fn()},ms*timing.scale)};
 
 /* Brücken zur Darstellung */
 const fx={push:o=>emit('fx',o)};
@@ -61,9 +63,10 @@ function log(t,k){G.log.unshift({t,k:k||'info'});if(G.log.length>50)G.log.length
 
 function newMon(t,x,y,elite){const d=MON[t];const hp=elite?Math.round(d.hp*1.6):d.hp;return{id:G.nid++,t,x,y,hp,max:hp,elite:!!elite,stun:0,aware:false,known:null,gx:null,gy:null,spit:0,spawn:0}}
 
-function startRun(seed,cls){
+/* opts.day: nur beim Nachspielen auf dem Server (dort gilt das Datum des Originals, nicht das heutige) */
+function startRun(seed,cls,opts){
   const c=CLS[cls];
-  G={seed,cls,day:dailyDay(seed),room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
+  G={seed,cls,day:opts&&'day' in opts?opts.day:dailyDay(seed),lp0:lp(cls),rec:[],medArm:null,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
      map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,
      p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   if(unl(0))startPerk();
@@ -265,7 +268,6 @@ function pickup(){
   if(p.inv.length>=INV){log(L(`${d.n} liegt hier. Inventar voll: Leg ein Item mit ✕ ab, dann tauschst du direkt.`,`${d.n} lies here. Inventory full: drop an item with ✕ to swap directly.`),'warn');return}
   p.inv.push(it.k);G.items.splice(G.items.indexOf(it),1);log(L(`Aufgenommen: ${d.n}.`,`Picked up: ${d.n}.`),'good');SFX.pick();
 }
-let medArmed=null;
 function useItem(idx){
   if(!canInput())return;const p=G.p,k=p.inv[idx];if(!k)return;const d=IT[k];
   if(G.target){G.target=null}
@@ -279,8 +281,10 @@ function useItem(idx){
     if(combat){p.act=0;afterAction()}else updateUI();return}
   switch(k){
     case'med':{if(p.hp>=p.max){log(L('Du bist unverletzt.','You are unhurt.'),'dim');updateUI();return}const h=Math.min(12,p.max-p.hp);
-      if(h<12&&!(medArmed&&medArmed.idx===idx&&performance.now()-medArmed.t<3000)){medArmed={idx,t:performance.now()};log(L(`Injektion heilt jetzt nur ${h} von 12 TP. Zum Bestätigen nochmal wählen (Taste ${idx+1}).`,`The injection would only heal ${h} of 12 HP right now. Select it again to confirm (key ${idx+1}).`),'warn');updateUI();return}
-      medArmed=null;p.hp+=h;log(L(`Injektion: +${h} TP.`,`Injection: +${h} HP.`),'good');SFX.pick();break}
+      // Bestätigen = gleich als nächste Eingabe nochmal wählen (ohne Uhrzeit, damit der Server den Run genau nachspielen kann)
+      const ma=G.medArm,seq=G.rec?G.rec.length:0;
+      if(h<12&&!(ma&&ma.idx===idx&&ma.seq===seq-1)){G.medArm={idx,seq};log(L(`Injektion heilt jetzt nur ${h} von 12 TP. Zum Bestätigen nochmal wählen (Taste ${idx+1}).`,`The injection would only heal ${h} of 12 HP right now. Select it again to confirm (key ${idx+1}).`),'warn');updateUI();return}
+      G.medArm=null;p.hp+=h;log(L(`Injektion: +${h} TP.`,`Injection: +${h} HP.`),'good');SFX.pick();break}
     case'stim':if(!combat){log(L('Spar dir das Stimulans für den Kampf.','Save the stim for a fight.'),'dim');updateUI();return}p.stim=3;log(L('Kampfstimulans: Angriff +3 für 3 Runden.','Combat stim: attack +3 for 3 rounds.'),'info');SFX.pick();break;
     case'scan':if(!combat){log(L('Der Melder zeigt nichts. Der Raum ist leer.','The tracker shows nothing. The room is empty.'),'dim');updateUI();return}
       G.mons.forEach(m=>{if(m.hp>0){m.gx=m.x;m.gy=m.y}});log(L('Bewegungsmelder: alle Gegner markiert.','Motion tracker: all enemies marked.'),'info');SFX.emp();break;
@@ -467,12 +471,12 @@ async function monTurn(m){
 
 const unl=i=>lp(G.cls)>=UNL[i];
 let lastEntry=null;
-function saveRun(){storeRun(G&&screen==='game'&&!G.over?{G,screen,sel}:null)}
+function saveRun(){if(timing.save)storeRun(G&&screen==='game'&&!G.over?{G,screen,sel}:null)}
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
   const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,day:G.day||null,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
-  // Abgebrochene Runs zählen nicht für die Bestenliste
-  lastEntry=entry;if(!entry.quit)saveScore(entry);updateUI();
+  // Abgebrochene Runs zählen nicht für die Bestenliste. Aufzeichnung (rec, lp0) nur für das Eintragen, nicht im Browser speichern.
+  lastEntry={...entry,rec:G.rec||null,lp0:G.lp0};if(!entry.quit)saveScore(entry);updateUI();
   later(()=>{if(G&&G.over)showScreen('end')},G.win?900:1200);
 }
 
@@ -504,18 +508,48 @@ function validRun(data){
     if((p.wpn&&!(IT[p.wpn]&&IT[p.wpn].slot==='wpn'))||(p.arm&&!(IT[p.arm]&&IT[p.arm].slot==='arm')))return false;
     if(G.offer!=null&&!(Array.isArray(G.offer)&&G.offer.every(k=>PERKS[k])))return false;
     if(G.target!=null&&!(typeof G.target==='object'&&['shoot','nade'].includes(G.target.kind)))return false;
+    if(G.rec!=null&&!Array.isArray(G.rec))return false;
+    if(G.medArm!=null&&!(isInt(G.medArm.idx,0,INV-1)&&isInt(G.medArm.seq,0,1e7)))return false;
     return true;
   }catch(e){return false}
 }
-/* Gespeicherten Run fortsetzen. Gibt true zurück, wenn es geklappt hat; ein ungültiger Run wird verworfen. */
+/* Gespeicherten Run fortsetzen. Gibt true zurück, wenn es geklappt hat; ein ungültiger Run wird verworfen.
+   Der Prüfwert des geladenen Stands kommt als Ereignis R in die Aufzeichnung, damit der Server beim Nachspielen
+   genau an dieser Stelle ebenfalls „neu lädt“ (dort entsteht derselbe Stand). */
 function restore(data){
   if(!validRun(data)){if(data)storeRun(null);return false}
   G=data.G;if(data.sel&&CLS[data.sel])sel=data.sel;finishing=false;busy=false;pendingEnd=false;hover=null;
+  if(G.rec)G.rec.push(['R',runHash(G),lp(G.cls)]);
   showScreen('game');
   // Im Gegnerzug gespeichert: Die Gegner ziehen komplett neu, sonst ließe sich ihr Zug durch Neuladen überspringen
   if(G.phase==='enemy'){G.active=null;enemyPhase()}else{computeVis();updateUI();autoEnd()}
   return true;
 }
+/* Prüfwert eines Spielstands. Ohne Log und Raumnamen: Die hängen von der Sprache ab, nicht vom Spielverlauf. */
+const runHash=g=>{const {log,name,...rest}=g;const s=JSON.stringify(rest);return h32(s).toString(36)+'.'+s.length};
+
+/* ---------- Aufzeichnung der Eingaben ----------
+   Jede Eingabe, die angenommen wird, landet in G.rec: [Kürzel, Runden gesamt, Phase p/x, Argumente…].
+   Der Server spielt den Run damit nach (core/replay.js) und trägt nur ein, was dabei herauskommt.
+   Interne Aufrufe (z. B. stepPlayer → endTurn, automatisches Zugende) werden nicht aufgezeichnet. */
+const recArg=v=>typeof v==='boolean'?+v:v;
+function rec(code,args){if(G&&G.rec)G.rec.push([code,G.rounds,G.phase==='explore'?'x':'p',...args.map(recArg)])}
+const recorded=(code,ok,fn)=>(...a)=>{if(ok(...a))rec(code,a);return fn(...a)};
+const okInput=()=>canInput();
+const ACTIONS={
+  s:recorded('s',okInput,stepPlayer),
+  c:recorded('c',(x,y)=>canInput()&&x>=0&&y>=0&&x<RW&&y<RH,tileClick),
+  f:recorded('f',okInput,fireButton),
+  a:recorded('a',okInput,ability),
+  b:recorded('b',okInput,ability2),
+  u:recorded('u',okInput,useItem),
+  d:recorded('d',okInput,dropItem),
+  g:recorded('g',okInput,pickupHere),
+  p:recorded('p',i=>!!(G&&G.offer&&G.offer[i]&&live()),takePerk),
+  e:recorded('e',()=>live()&&!busy&&!G.offer&&G.phase==='player',endTurn),
+  x:recorded('x',()=>!!(G&&G.target&&live()),cancelTarget),
+};
+
 const setScreen=s=>{screen=s};
 const setSel=k=>{if(CLS[k])sel=k};
 const setHover=h=>{hover=h};
@@ -527,7 +561,11 @@ const S={
   get hurtT(){return hurtT},get lastEntry(){return lastEntry},
 };
 
-export {S,timing,PERKS,
-  startRun,enterRoom,startRound,endTurn,stepPlayer,tileClick,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,
-  cancelTarget,quitRun,restore,validRun,setScreen,setSel,setHover,computeVis,updateUI,
+/* Nach außen nur die aufgezeichneten Fassungen der Eingaben */
+const {s:stepPlayer_,c:tileClick_,f:fireButton_,a:ability_,b:ability2_,u:useItem_,d:dropItem_,g:pickupHere_,p:takePerk_,e:endTurn_,x:cancelTarget_}=ACTIONS;
+export {S,timing,PERKS,ACTIONS,runHash,
+  startRun,enterRoom,startRound,
+  endTurn_ as endTurn,stepPlayer_ as stepPlayer,tileClick_ as tileClick,fireButton_ as fireButton,ability_ as ability,ability2_ as ability2,
+  useItem_ as useItem,dropItem_ as dropItem,pickupHere_ as pickupHere,takePerk_ as takePerk,cancelTarget_ as cancelTarget,
+  quitRun,restore,validRun,setScreen,setSel,setHover,computeVis,updateUI,
   atk,def,need,dodge,abCd,score,live,canInput,inCombat,monAt,visMonAt,itemAt,canSee,canShoot,shootable,shootTargets,nadeOk,pathTo,unl,lp};
