@@ -25,7 +25,7 @@ const EN={
   endTurn:'End turn',endTurn2:'End<br>turn',
   controls:'Controls',seen:'Enemies in sight',equip:'Equipment',
   nameLbl:'Name for the leaderboard of all players',namePh:'max. 16 characters',
-  shareLbl:'Challenge for your friends',copy:'Copy',again:'Same seed, try again',back:'Back to start',
+  shareLbl:'Challenge for your friends',copy:'Copy',share:'Share result',again:'Same seed, try again',back:'Back to start',
   music:'Music',sfx:'Effects',muteMusic:'Mute music',muteSfx:'Mute effects',filter:'Visual filter',filterHint:'Glow and scanlines',close:'Close',
 };
 

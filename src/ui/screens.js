@@ -34,6 +34,23 @@ function timeSpan(v){
 /* Tag als kurzes Datum: 08.11. bzw. 8 Nov */
 const dayLabel=day=>new Date(day+'T00:00:00Z').toLocaleDateString(locale(),L({day:'2-digit',month:'2-digit',timeZone:'UTC'},{day:'numeric',month:'short',timeZone:'UTC'}));
 
+/* ---------- Ergebnis teilen ---------- */
+/* Raumleiste wie bei Wordle: geschafft grün, Todesraum rot (Abbruch gelb), Rest schwarz, Flucht mit Rakete */
+function roomBar(e){
+  let s='';for(let i=1;i<=ROOMS;i++)s+=i<=e.cleared?'🟩':(i===e.room&&!e.win)?(e.quit?'🟨':'🟥'):'⬛';
+  return s+(e.win?' 🚀':'');
+}
+function shareText(e){
+  const cn=CLS[e.cls].n,url=`${location.origin}/#seed-${e.seed}`;
+  const what=e.day?L(`Seed des Tages ${dayLabel(e.day)}`,`Seed of the day ${dayLabel(e.day)}`):`Seed ${e.seed}`;
+  const res=e.win?L('entkommen','escaped'):(e.quit?L('abgebrochen','abandoned'):L('gestorben','died'))+L(' in Raum ',' in room ')+e.room+'/'+ROOMS;
+  const lines=[`Wrack Ikarus · ${what} · ${cn}`,`${roomBar(e)} ${nf(e.score)} ${L('Punkte','points')} (${res})`,L('Schlägst du das?','Can you beat that?')];
+  return{title:'Wrack Ikarus',lines,url,text:lines.join('\n'),full:lines.join('\n')+'\n'+url};
+}
+let share=null;
+const canShare=s=>!!navigator.share&&(!navigator.canShare||navigator.canShare({title:s.title,text:s.text,url:s.url}));
+const currentShare=()=>share;
+
 /* ---------- Seed des Tages (Startbildschirm) ---------- */
 let shownDay='';
 function renderDaily(){
@@ -109,10 +126,10 @@ function renderEnd(refresh=true){
     :L(`${cause?'Getötet durch: '+cause+'. ':''}Die Bergungsakte für ${cn} wird geschlossen.`,`${cause?'Killed by: '+cause+'. ':''}The salvage file for the ${cn} is closed.`);
   const items=[[L('Punkte','Score'),nf(e.score),1],[L('Raum','Room'),`${e.room}/${ROOMS}`],[L('Stufe','Level'),e.lvl],[L('Abschüsse','Kills'),e.kills],[L('Runden','Rounds'),e.rounds],['Seed',e.seed]];
   $('endStats').innerHTML=items.map(([a,b,big])=>`<div${big?' class="big"':''}><dt>${a}</dt><dd>${b}</dd></div>`).join('');
-  // Mit Link: öffnet das Spiel direkt mit diesem Seed
-  const link=`${location.origin}/#seed-${e.seed}`,what=e.day?L(`Seed des Tages ${dayLabel(e.day)}`,`Seed of the day ${dayLabel(e.day)}`):`Seed ${e.seed}`;
-  $('shareTxt').value=L(`Wrack Ikarus · ${what} · ${cn}: ${nf(e.score)} Punkte (${e.win?'entkommen':(e.quit?'abgebrochen':'gestorben')+' in Raum '+e.room+'/'+ROOMS}). Schlägst du das? ${link}`,
-    `Wrack Ikarus · ${what} · ${cn}: ${nf(e.score)} points (${e.win?'escaped':(e.quit?'abandoned':'died')+' in room '+e.room+'/'+ROOMS}). Can you beat that? ${link}`);
+  // Ergebnis zum Teilen: mehrzeilig fürs Teilen-Menü und die Zwischenablage, einzeilig im Textfeld
+  const s=shareText(e);share=s;
+  $('shareTxt').value=s.lines.join(' · ')+' '+s.url;
+  $('shareBtn').hidden=!canShare(s);
   renderScores($('hsEnd'),e.id);
   $('submitBox').hidden=!!e.quit;
   const nm=loadName();
@@ -165,4 +182,4 @@ on('lang',()=>{
   for(const [el,[list,hl,kind]] of lastGlobal)if(!el.closest('[hidden]'))renderGlobal(el,list,hl,kind);
 });
 
-export {showScreen,renderClasses,drawPreview,sendScore};
+export {showScreen,renderClasses,drawPreview,sendScore,currentShare};

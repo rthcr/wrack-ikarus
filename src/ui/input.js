@@ -3,7 +3,7 @@ import {S,startRun,endTurn,stepPlayer,fireButton,ability,ability2,useItem,dropIt
 import {normSeed,randomSeed,dayKey,dailySeed} from '../core/rng.js';
 import {unlock} from '../audio/sfx.js';
 import {L} from '../core/i18n.js';
-import {showScreen,renderClasses,drawPreview,sendScore} from './screens.js';
+import {showScreen,renderClasses,drawPreview,sendScore,currentShare} from './screens.js';
 
 const $=id=>document.getElementById(id);
 
@@ -47,8 +47,13 @@ $('dailyBtn').onclick=()=>{unlock();const s=dailySeed(dayKey());$('seedIn').valu
 $('sendBtn').onclick=sendScore;
 $('againBtn').onclick=()=>{unlock();const e=S.lastEntry;if(e)startRun(e.seed,e.cls)};
 $('newBtn').onclick=()=>{const e=S.lastEntry;if(e){$('seedIn').value=e.seed;setSel(e.cls);renderClasses()}showScreen('title')};
-$('copyBtn').onclick=()=>{const inp=$('shareTxt'),b=$('copyBtn');
+// Kopieren: mehrzeiliger Text mit Raumleiste und Link (das Textfeld zeigt nur eine Zeile)
+function copyResult(){const inp=$('shareTxt'),b=$('copyBtn'),s=currentShare();
   const fallback=()=>{inp.focus();inp.select();b.textContent=L('Markiert, jetzt kopieren','Selected, copy now')};
-  try{navigator.clipboard.writeText(inp.value).then(()=>{b.textContent=L('Kopiert','Copied');setTimeout(()=>b.textContent=L('Kopieren','Copy'),1600)},fallback)}catch(e){fallback()}};
+  try{navigator.clipboard.writeText(s?s.full:inp.value).then(()=>{b.textContent=L('Kopiert','Copied');setTimeout(()=>b.textContent=L('Kopieren','Copy'),1600)},fallback)}catch(e){fallback()}}
+$('copyBtn').onclick=copyResult;
+// Teilen: Teilen-Menü des Systems (WhatsApp, Nachrichten, …); schlägt es fehl, wird kopiert. Abbrechen durch den Nutzer ist kein Fehler.
+$('shareBtn').onclick=()=>{const s=currentShare();if(!s)return;
+  try{navigator.share({title:s.title,text:s.text,url:s.url}).catch(err=>{if(!err||err.name!=='AbortError')copyResult()})}catch(e){copyResult()}};
 
 export {startFromTitle};
