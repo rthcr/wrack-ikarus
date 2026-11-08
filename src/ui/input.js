@@ -1,6 +1,6 @@
 // Eingabe über Tastatur, Steuerkreuz und Knöpfe. Klicks aufs Spielfeld verarbeitet die Phaser-Szene.
 import {S,startRun,endTurn,stepPlayer,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,cancelTarget,quitRun,setSel,canInput,inCombat} from '../core/game.js';
-import {normSeed,randomSeed} from '../core/rng.js';
+import {normSeed,randomSeed,dayKey,dailySeed} from '../core/rng.js';
 import {unlock} from '../audio/sfx.js';
 import {L} from '../core/i18n.js';
 import {showScreen,renderClasses,drawPreview,sendScore} from './screens.js';
@@ -42,6 +42,8 @@ $('rollBtn').onclick=()=>{$('seedIn').value=randomSeed();drawPreview()};
 $('seedIn').addEventListener('input',()=>{const v=normSeed($('seedIn').value);if(v!==$('seedIn').value)$('seedIn').value=v;drawPreview()});
 function startFromTitle(){unlock();let s=normSeed($('seedIn').value);if(!s){s=randomSeed();$('seedIn').value=s}startRun(s,S.sel)}
 $('startBtn').onclick=startFromTitle;
+// Seed des Tages: immer der heutige, mit der gewählten Klasse
+$('dailyBtn').onclick=()=>{unlock();const s=dailySeed(dayKey());$('seedIn').value=s;startRun(s,S.sel)};
 $('sendBtn').onclick=sendScore;
 $('againBtn').onclick=()=>{unlock();const e=S.lastEntry;if(e)startRun(e.seed,e.cls)};
 $('newBtn').onclick=()=>{const e=S.lastEntry;if(e){$('seedIn').value=e.seed;setSel(e.cls);renderClasses()}showScreen('title')};

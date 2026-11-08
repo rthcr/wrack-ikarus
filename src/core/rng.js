@@ -9,4 +9,11 @@ function wpick(tab,r){let s=0;for(const k in tab)s+=tab[k];let v=r()*s;for(const
 const normSeed=s=>(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,10);
 function randomSeed(){let s='';for(let i=0;i<6;i++)s+=ALPH[Math.floor(Math.random()*ALPH.length)];return s}
 
-export {h32,makeRng,wpick,normSeed,randomSeed};
+/* Seed des Tages: für alle gleich, wechselt um Mitternacht UTC.
+   Muss genauso rechnen wie dailySeed() in api/scores.js, sonst lehnt der Server die Tagesliste ab. */
+const dayKey=(d=new Date())=>d.toISOString().slice(0,10);   // 'JJJJ-MM-TT' in UTC
+function dailySeed(day){let s='';for(let i=0;i<6;i++)s+=ALPH[h32('wrack-ikarus-tag:'+day+':'+i)%ALPH.length];return s}
+/* Gehört dieser Seed zum heutigen Tag? Dann das Datum, sonst null */
+const dailyDay=(seed,d=new Date())=>seed===dailySeed(dayKey(d))?dayKey(d):null;
+
+export {h32,makeRng,wpick,normSeed,randomSeed,dayKey,dailySeed,dailyDay};

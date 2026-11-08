@@ -1,6 +1,8 @@
 // Gemeinsame Bestenliste für Wrack Ikarus.
-// GET  /api/scores  -> Top 20
-// POST /api/scores  -> neuen Run eintragen (Punkte werden hier neu berechnet)
+// GET  /api/scores            -> Top 20 aller Zeiten
+// GET  /api/scores?day=JJJJ-MM-TT -> Top 20 des Seeds des Tages
+// POST /api/scores            -> neuen Run eintragen (Punkte werden hier neu berechnet);
+//                                mit day und dem passenden Tages-Seed zusätzlich in die Tagesliste
 // Speicher: Upstash Redis über die REST-API (Variablen KV_REST_API_URL / KV_REST_API_TOKEN).
 
 const crypto = require('crypto');
@@ -14,6 +16,9 @@ const KEEP = 200;              // so viele Einträge bleiben gespeichert
 const TOP = 20;                // so viele liefert GET aus
 const PER_MINUTE = 5;          // Einträge pro Minute und Anschluss
 const ROOMS = 9;
+const DAY_TTL = 8 * 24 * 3600; // Tageslisten werden nach 8 Tagen gelöscht
+const dayBoard = (d) => 'wi:day:' + d;          // Sorted Set je Tag
+const dayEntries = (d) => 'wi:day:' + d + ':e'; // Hash je Tag (eigene Kopie, unabhängig vom Kürzen der Gesamtliste)
 const CLASSES = ['marine', 'tech', 'scout'];
 
 async function redis(commands) {
@@ -36,6 +41,19 @@ function calcScore(e) {
 }
 
 const isInt = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+
+// Seed des Tages. Muss mit dailySeed() in src/core/rng.js übereinstimmen.
+const ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function h32(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function dailySeed(day) { let s = ''; for (let i = 0; i < 6; i++) s += ALPH[h32('wrack-ikarus-tag:' + day + ':' + i) % ALPH.length]; return s; }
+const dayKey = (d) => d.toISOString().slice(0, 10);
+const isDayFormat = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+// Heute oder gestern (UTC): Ein Run, der kurz vor Mitternacht beginnt, zählt noch für seinen Tag.
+function acceptDay(day, seed) {
+  if (!isDayFormat(day)) return null;
+  const now = new Date(), ok = [dayKey(now), dayKey(new Date(now.getTime() - 864e5))];
+  return ok.includes(day) && dailySeed(day) === seed ? day : null;
+}
 
 function validate(b) {
   if (!b || typeof b !== 'object') return 'Ungültige Daten.';
@@ -60,13 +78,14 @@ function validate(b) {
   if (b.kills > 15 * b.room + b.rounds) return 'Dieser Run ist nicht plausibel.';
   const e = { name, seed, cls: b.cls, win, room: b.room, cleared: b.cleared, rounds: b.rounds, kills: b.kills, lvl: b.lvl, xp: b.xp };
   e.score = calcScore(e);
+  e.day = acceptDay(b.day, seed);
   return e;
 }
 
-async function topList() {
-  const [ids] = await redis([['ZREVRANGE', BOARD, '0', String(TOP - 1)]]);
+async function topList(board = BOARD, entries = ENTRIES) {
+  const [ids] = await redis([['ZREVRANGE', board, '0', String(TOP - 1)]]);
   if (!ids || !ids.length) return [];
-  const [rows] = await redis([['HMGET', ENTRIES, ...ids]]);
+  const [rows] = await redis([['HMGET', entries, ...ids]]);
   return rows
     .map((r) => {
       try {
@@ -92,6 +111,13 @@ module.exports = async function handler(req, res) {
   }
   try {
     if (req.method === 'GET') {
+      let day = req.query && req.query.day;
+      if (day === undefined) { try { day = new URL(req.url, 'http://x').searchParams.get('day'); } catch (err) { day = null; } }
+      if (day) {
+        if (!isDayFormat(day)) { res.status(400).json({ error: 'Ungültiges Datum.' }); return; }
+        res.status(200).json({ day, seed: dailySeed(day), scores: await topList(dayBoard(day), dayEntries(day)) });
+        return;
+      }
       res.status(200).json({ scores: await topList() });
       return;
     }
@@ -115,6 +141,7 @@ module.exports = async function handler(req, res) {
       }
       const id = Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
       const entry = { id, ...e, date: new Date().toISOString() };
+      if (!entry.day) delete entry.day;
       const [, , rank, total] = await redis([
         ['HSET', ENTRIES, id, JSON.stringify(entry)],
         ['ZADD', BOARD, String(e.score), id],
@@ -126,7 +153,26 @@ module.exports = async function handler(req, res) {
         const [old] = await redis([['ZRANGE', BOARD, '0', cut]]);
         if (old.length) await redis([['ZREMRANGEBYRANK', BOARD, '0', cut], ['HDEL', ENTRIES, ...old]]);
       }
-      res.status(201).json({ id, rank: rank + 1, total, score: e.score, scores: await topList() });
+      // Seed des Tages: zusätzlich in die Tagesliste
+      let daily = null;
+      if (e.day) {
+        const b = dayBoard(e.day), h = dayEntries(e.day);
+        const [, , , , dRank, dTotal] = await redis([
+          ['HSET', h, id, JSON.stringify(entry)],
+          ['ZADD', b, String(e.score), id],
+          ['EXPIRE', h, String(DAY_TTL)],
+          ['EXPIRE', b, String(DAY_TTL)],
+          ['ZREVRANK', b, id],
+          ['ZCARD', b],
+        ]);
+        if (dTotal > KEEP) {
+          const cut = String(dTotal - KEEP - 1);
+          const [old] = await redis([['ZRANGE', b, '0', cut]]);
+          if (old.length) await redis([['ZREMRANGEBYRANK', b, '0', cut], ['HDEL', h, ...old]]);
+        }
+        daily = { day: e.day, rank: dRank + 1, total: dTotal, scores: await topList(b, h) };
+      }
+      res.status(201).json({ id, rank: rank + 1, total, score: e.score, scores: await topList(), daily });
       return;
     }
     res.setHeader('Allow', 'GET, POST');

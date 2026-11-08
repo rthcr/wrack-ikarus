@@ -16,6 +16,7 @@ const EN={
   rule3:'<b>Cover matters</b>Crates and consoles block line of sight. Enemies only notice you with a clear line of sight; otherwise they search where they last saw you.',
   pickClass:'1 · Choose a class',pickSeed:'2 · Set a seed',roll:'Roll',
   seedHint:'Same seed and same door choices give the same rooms and enemies. Send it to friends and compare your scores.',
+  dailyLbl:'Seed of the day',dailyBoardLbl:'Today’s leaderboard',
   globalLbl:'Leaderboard · all players',localLbl:'Your runs in this browser',
   dock:'3 · Dock',start:'Start mission',
   classic:'Prefer the first version? <a href="/classic/">Play the classic version</a> (German only)',

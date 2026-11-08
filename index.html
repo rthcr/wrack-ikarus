@@ -64,6 +64,19 @@
       </div>
     </div>
 
+    <div class="setup daily" id="dailyBox">
+      <div class="block">
+        <h2 class="lbl" data-t="dailyLbl">Seed des Tages</h2>
+        <div class="daily-head"><span class="daily-seed" id="dailySeed"></span><span class="daily-date" id="dailyDate"></span></div>
+        <p class="hint" id="dailyInfo"></p>
+        <button id="dailyBtn" class="primary"></button>
+      </div>
+      <div class="block">
+        <h2 class="lbl" data-t="dailyBoardLbl">Bestenliste heute</h2>
+        <ol class="hs day" id="dsTitle"></ol>
+      </div>
+    </div>
+
     <div class="setup">
       <div class="block">
         <h2 class="lbl" data-t="pickClass">1 · Klasse wählen</h2>
@@ -187,6 +200,8 @@
       <button id="againBtn" class="primary" data-t="again">Gleicher Seed, neuer Versuch</button>
       <button id="newBtn" class="btn" data-t="back">Zurück zum Start</button>
     </div>
+    <h2 class="lbl" data-t="dailyBoardLbl" id="dsEndLbl" hidden>Bestenliste heute</h2>
+    <ol class="hs day" id="dsEnd" hidden></ol>
     <h2 class="lbl" data-t="globalLbl">Bestenliste aller Spieler</h2>
     <ol class="hs" id="gsEnd"></ol>
     <h2 class="lbl sub2" data-t="localLbl">Deine Runs in diesem Browser</h2>

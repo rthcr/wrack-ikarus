@@ -22,7 +22,7 @@ src/main.js           Einstieg: Phaser starten, Module verbinden, gespeicherten 
 src/style.css         Gestaltung der Oberfläche
 src/core/             Spiellogik, OHNE DOM und OHNE Phaser (läuft auch in Node, siehe npm run check)
   config.js           Konstanten und Datentabellen (Klassen, Gegner, Items)
-  rng.js              Seed-Zufall (deterministisch)
+  rng.js              Seed-Zufall (deterministisch), Seed des Tages (dailySeed, dayKey)
   geometry.js         Sichtlinien, Schrittprüfung
   roomgen.js          Raumgenerator
   storage.js          localStorage: Bestenliste, LP, Run, Name, Ton/Musik an-aus, Lautstärken, Bildfilter
@@ -47,7 +47,7 @@ public/assets/audio/  erzeugte MP3s und manifest.json (nicht von Hand bearbeiten
 scripts/audio/        generate.py: synthetischer Klang-Generator für alle Effekte und die Musik
 public/               favicon.svg, favicon-32/48.png, apple-touch-icon.png, og.png (erzeugt, siehe Befehle)
 public/classic/       Die erste Fassung des Spiels als einzelne HTML-Datei, erreichbar unter /classic/. NICHT ändern.
-api/scores.js         Vercel-Funktion für die gemeinsame Bestenliste (Upstash Redis)
+api/scores.js         Vercel-Funktion für die gemeinsame Bestenliste und die Tageslisten (Upstash Redis)
 scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 ```
 
@@ -59,6 +59,9 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Determinismus:** Gleicher Seed und gleiche Eingaben müssen denselben Run ergeben. Zufall im Spiel nur über `rnd()` (Kampf)
   bzw. den Raumgenerator, nie `Math.random()` in der Spiellogik.
 - **Punkte:** `score()` in `src/core/game.js` und `calcScore()` in `api/scores.js` müssen gleich rechnen, sonst lehnt der Server Einträge ab.
+- **Seed des Tages:** für alle gleich, wechselt um Mitternacht UTC. `dailySeed()` in `src/core/rng.js` und in `api/scores.js`
+  müssen gleich rechnen. Ein Run mit dem heutigen Tages-Seed bekommt `G.day`; der Server trägt ihn zusätzlich in
+  `wi:day:<Datum>` ein (heute oder gestern, läuft nach 8 Tagen ab). `GET /api/scores?day=JJJJ-MM-TT` liefert die Tagesliste.
 - **Speicherschlüssel:** Bestenliste und LP teilen sich die Schlüssel mit der klassischen Fassung (Fortschritt gilt in beiden).
   Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v3`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
 - Nach Logikänderungen `npm run check` laufen lassen.

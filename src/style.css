@@ -102,6 +102,14 @@ p{margin:0}
 .hs .rs.win{color:var(--green)}
 .hs .dt{color:var(--dim);font-size:12px;text-align:right;white-space:nowrap}
 .hs li.new{background:#1b1a14}
+/* Seed des Tages */
+.daily-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.daily-seed{font-family:var(--f-display);font-size:30px;letter-spacing:.14em;color:var(--amber)}
+.daily-date{color:var(--cyan);font-size:13px;letter-spacing:.06em}
+.daily .primary{align-self:flex-start}
+.hs.day li{grid-template-columns:2.2em 5.5em minmax(0,1fr) minmax(0,.9fr) minmax(0,.7fr) 3.6em}
+.hs .tag-day{color:var(--amber);font-size:11px;letter-spacing:.08em}
+@media (max-width:560px){.hs.day li{grid-template-columns:2em 5.5em minmax(0,1fr) auto}.hs.day .sd{grid-column:3;grid-row:2}.hs.day .rs{grid-column:4;grid-row:1;text-align:right}.hs.day .dt{grid-column:2;grid-row:2}}
 .hs .none{display:block;color:var(--dim);border:0}
 .hs .nm{overflow-wrap:anywhere;color:var(--text)}
 .lbl.sub2{margin-top:6px}

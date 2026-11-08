@@ -2,7 +2,7 @@
 // Kein DOM, keine Grafik: Alles, was sichtbar oder hörbar wird, geht als Ereignis über den Bus.
 // Der Regelcode ist aus der klassischen Version übernommen und dort Zeile für Zeile gleich.
 import {RW,RH,ROOMS,INV,FLOOR,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,MON,IT,ITABLE,tierOf} from './config.js';
-import {h32,wpick} from './rng.js';
+import {h32,wpick,dailyDay} from './rng.js';
 import {solidT,cheb,losMap,canStep} from './geometry.js';
 import {sideTile,genRoom} from './roomgen.js';
 import {saveScore,addLP,lp,storeRun} from './storage.js';
@@ -63,7 +63,7 @@ function newMon(t,x,y,elite){const d=MON[t];const hp=elite?Math.round(d.hp*1.6):
 
 function startRun(seed,cls){
   const c=CLS[cls];
-  G={seed,cls,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
+  G={seed,cls,day:dailyDay(seed),room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
      map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,
      p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   if(unl(0))startPerk();
@@ -470,7 +470,7 @@ let lastEntry=null;
 function saveRun(){storeRun(G&&screen==='game'&&!G.over?{G,screen,sel}:null)}
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
-  const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
+  const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,day:G.day||null,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
   // Abgebrochene Runs zählen nicht für die Bestenliste
   lastEntry=entry;if(!entry.quit)saveScore(entry);updateUI();
   later(()=>{if(G&&G.over)showScreen('end')},G.win?900:1200);
