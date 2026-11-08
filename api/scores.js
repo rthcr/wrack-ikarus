@@ -164,7 +164,9 @@ module.exports = async function handler(req, res) {
       const diff = r.ok ? SAME.filter((k) => r.entry[k] !== e[k]) : [];
       if (!r.ok || diff.length) {
         console.warn('Run abgelehnt', e.seed, e.cls, r.ok ? diff.map((k) => `${k}: ${e[k]} ≠ ${r.entry[k]}`).join(', ') : r.reason, `${Date.now() - t0} ms`);
-        res.status(400).json({ error: 'Dieser Run ist nicht plausibel.' });
+        // In der Vorschau-Version den Grund mitschicken, damit Testläufe sich auswerten lassen
+        const why = process.env.VERCEL_ENV === 'preview' ? ' [' + (r.ok ? diff.map((k) => `${k} ${e[k]}≠${r.entry[k]}`).join(', ') : r.reason) + ']' : '';
+        res.status(400).json({ error: 'Dieser Run ist nicht plausibel.' + why });
         return;
       }
       const id = Date.now().toString(36) + crypto.randomBytes(3).toString('hex');

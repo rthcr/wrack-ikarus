@@ -20,7 +20,8 @@ function walkDist(map, from) {
   return d;
 }
 
-export async function runBot(api, wait, maxSteps = 4000) {
+// human: wie ein Mensch das automatische Zugende abwarten, statt selbst „Zug beenden“ zu drücken
+export async function runBot(api, wait, maxSteps = 4000, human = false) {
   let steps = 0, maxRoom = 1;
   while (steps++ < maxSteps) {
     await wait();
@@ -47,6 +48,7 @@ export async function runBot(api, wait, maxSteps = 4000) {
           if (best >= 0) { api.tileClick(best % RW, (best / RW) | 0); continue; }
         }
       }
+      if (human && p.mp <= 0 && p.act <= 0) continue;
       api.endTurn(); continue;
     }
     if (G.phase === 'explore') {

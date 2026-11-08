@@ -30,11 +30,13 @@ function checkRec(rec){
 /* Wartet, bis cond() stimmt: erst Mikroschritte (laufende Abläufe wie Laufweg oder Gegnerzug),
    dann auch Zeitgeber (z. B. automatisches Zugende). Gibt false zurück, wenn es nie stimmt. */
 async function until(cond,budget){
-  for(let round=0;round<200;round++){
-    for(let i=0;i<5000;i++){if(cond())return true;if(--budget.n<0||(i%1000===0&&Date.now()>budget.end))return false;await null}
+  for(;;){
+    // 64 Mikroschritte reichen, damit Laufweg und Gegnerzug weiterlaufen; danach die Zeitgeber zum Zug kommen lassen.
+    // (Wartet die Eingabe auf das automatische Zugende, käme es sonst erst nach sehr vielen leeren Schritten.)
+    for(let i=0;i<64;i++){if(cond())return true;if(--budget.n<0)return false;await null}
+    if(Date.now()>budget.end)return cond();
     await new Promise(r=>setTimeout(r,0));
   }
-  return cond();
 }
 
 /**
@@ -59,7 +61,7 @@ export async function replayRun(run){
   const hasReload=rec.some(ev=>ev[0]==='R');
   const prevTiming={scale:game.timing.scale,save:game.timing.save};
   game.timing.scale=0;game.timing.save=hasReload;   // ohne Neuladen muss nichts gespeichert werden
-  const budget={n:1e6,end:Date.now()+8000};   // Obergrenze für Rechenschritte und Zeit
+  const budget={n:2e7,end:Date.now()+8000};   // Obergrenze für Rechenschritte und Zeit (8 s)
   try{
     game.startRun(seed,cls,{day:day||null});
     const S=game.S;
@@ -84,7 +86,7 @@ export async function replayRun(run){
     if(!await until(()=>S.G&&S.G.over,budget))return{ok:false,reason:'Run endet nicht'};
     const e=S.lastEntry;
     if(!e||e.quit)return{ok:false,reason:'Run abgebrochen'};
-    return{ok:true,entry:{seed:e.seed,cls:e.cls,day:e.day,room:e.room,win:e.win,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,score:e.score}};
+    return{ok:true,spins:2e7-budget.n,entry:{seed:e.seed,cls:e.cls,day:e.day,room:e.room,win:e.win,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,score:e.score}};
   }catch(err){
     return{ok:false,reason:'Fehler beim Nachspielen: '+(err&&err.message||err)};
   }finally{

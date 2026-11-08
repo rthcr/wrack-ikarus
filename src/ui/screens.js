@@ -18,7 +18,8 @@ const LP=()=>L('LP','VP');
 const SERVER_EN={'Ungültige Daten.':'Invalid data.','Bitte gib einen Namen ein.':'Please enter a name.','Ungültiger Seed.':'Invalid seed.','Ungültige Klasse.':'Invalid class.','Ungültige Werte.':'Invalid values.','Ungültiges Datum.':'Invalid date.','Dieser Run kann nicht geprüft werden.':'This run cannot be verified.',
   'Dieser Run ist nicht plausibel.':'This run is not plausible.','Die Datenbank ist nicht mit dem Projekt verbunden.':'The database is not connected to the project.',
   'Zu viele Einträge. Versuch es in einer Minute nochmal.':'Too many entries. Try again in a minute.','Die Bestenliste ist gerade nicht erreichbar.':'The leaderboard is unavailable right now.'};
-const serverMsg=m=>m&&L(m,SERVER_EN[m]||'The server rejected the entry.');
+// Zusatz in eckigen Klammern (Grund, nur in der Vorschau-Version) bleibt erhalten
+const serverMsg=m=>{if(!m)return m;const x=/^(.*?)( \[.*\])?$/.exec(m);return L(m,(SERVER_EN[x[1]]||'The server rejected the entry.')+(x[2]||''))};
 
 /* Datum eines Eintrags: kurz (07.11.26), Uhrzeit beim Darüberfahren */
 function dateSpan(v){
