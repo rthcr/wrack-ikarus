@@ -16,6 +16,7 @@ import './ui/input.js';
 import './ui/settings.js';
 import './ui/titleArt.js';
 import './ui/controls.js';
+import './ui/fullscreen.js';
 
 const $=id=>document.getElementById(id);
 
@@ -30,20 +31,34 @@ const game=new Phaser.Game({
   audio:{noAudio:true},          // Ton kommt vorerst aus audio/sfx.js
   scale:{mode:Phaser.Scale.NONE,zoom:2},
   scene:[GameScene],
-  callbacks:{postBoot:g=>{g.canvas.id='cv';g.canvas.setAttribute('aria-label','Spielfeld');fit()}},
+  callbacks:{postBoot:g=>{g.canvas.id='cv';g.canvas.setAttribute('aria-label','Spielfeld');fit(true)}},
 });
 
-/* Spielfeld so groß wie möglich; ab Faktor 3 ganzzahlig, darunter in Viertel- bzw. Halbschritten */
-function fit(){
+/* Sichthöhe ohne die beim Scrollen ein- und ausfahrenden Browserleisten (iPad, iPhone):
+   100svh bleibt gleich, innerHeight nicht. Ältere Browser ohne svh liefern 0, dann gilt innerHeight. */
+const vhProbe=document.createElement('div');
+vhProbe.style.cssText='position:fixed;top:0;left:0;width:0;height:100svh;visibility:hidden;pointer-events:none';
+document.body.appendChild(vhProbe);
+const viewH=()=>vhProbe.offsetHeight||window.innerHeight;
+
+/* Spielfeld so groß wie möglich; ab Faktor 3 ganzzahlig, darunter in Viertel- bzw. Halbschritten.
+   Ohne force bleibt die Größe, solange sich nur die Höhe um weniger als 120 px ändert (Leisten beim Scrollen). */
+let fitW=0,fitH=0;
+function fit(force){
   const st=$('stage');const w=st.clientWidth-2;if(w<=0||!game.scale)return;
-  const maxH=Math.max(220,window.innerHeight*.58);
+  const h=viewH();
+  if(!force&&w===fitW&&Math.abs(h-fitH)<120)return;
+  fitW=w;fitH=h;
+  const maxH=Math.max(220,h*.58);
   let s=Math.min(w/(RW*TS),maxH/(RH*TS));s=s>=3?Math.floor(s):s>=2?Math.floor(s*2)/2:Math.max(.75,Math.floor(s*4)/4);
   if(game.scale.zoom!==s)game.scale.setZoom(s);
 }
-on('screen',s=>{if(s==='game')requestAnimationFrame(fit)});
+on('screen',s=>{if(s==='game')requestAnimationFrame(()=>fit(true))});
 // Neuer Run: Seed in die Adresszeile, damit man den Link teilen kann
 on('reset',()=>{try{history.replaceState(null,'','#seed-'+S.G.seed)}catch(e){}});
 window.addEventListener('resize',()=>{if(S.screen==='game')fit()});
+// Vollbild an/aus: Platz neu verteilen
+for(const ev of ['fullscreenchange','webkitfullscreenchange'])document.addEventListener(ev,()=>{if(S.screen==='game')requestAnimationFrame(()=>fit(true))});
 
 /* Bildfilter (Leuchten, Röhrenmonitor) an/aus */
 let filterOn=loadFilter();

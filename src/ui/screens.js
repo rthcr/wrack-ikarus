@@ -58,7 +58,7 @@ async function sendScore(){
   sending=false;
 }
 function renderEnd(){
-  const e=S.lastEntry;if(!e)return;$('scrEnd').classList.toggle('won',e.win);
+  const e=S.lastEntry;if(!e)return;$('scrEnd').classList.toggle('won',e.win);$('scrEnd').classList.toggle('quit',!e.win&&!!e.quit);
   $('endEyebrow').textContent=e.win?'Rettungskapsel gestartet':e.quit?'Rückzug angeordnet':'Signal verloren';
   $('endTitle').textContent=e.win?'Entkommen':e.quit?'Abgebrochen in Raum '+e.room:'Gefallen in Raum '+e.room;
   $('endText').textContent=e.win?`Als ${CLS[e.cls].n} hast du die Brutmutter getötet und die IKARUS-7 lebend verlassen.`:e.quit?`Du hast den Einsatz als ${CLS[e.cls].n} abgebrochen. Abgebrochene Runs kommen nicht in die Bestenliste.`:`${e.cause?'Getötet durch: '+e.cause+'. ':''}Die Bergungsakte für ${CLS[e.cls].n} wird geschlossen.`;

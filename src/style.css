@@ -232,6 +232,7 @@ p{margin:0}
 
 .end{display:flex;flex-direction:column;gap:16px;max-width:760px}
 .end h1{font-family:var(--f-display);font-size:clamp(34px,7vw,64px);line-height:.95;color:var(--red);text-transform:uppercase}
+.end.quit h1{font-family:var(--f-title);font-weight:800;font-size:clamp(44px,8vw,84px);line-height:.9;letter-spacing:.035em}   /* Abbruch: ebenfalls Titel-Schriftzug */
 .end.won h1{color:var(--green);font-family:var(--f-title);font-weight:800;font-size:clamp(52px,11vw,104px);line-height:.9;letter-spacing:.035em}   /* Sieg: Schriftzug wie der Titel */
 .end .eyebrow{color:var(--dim)}
 .endstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:0}

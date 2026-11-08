@@ -39,6 +39,7 @@ src/ui/               DOM-Oberfläche: hud.js (Statuskonsole), screens.js (Titel
                       settings.js (Menü Einstellungen: Lautstärke/Stumm Musik und Effekte, Bildfilter; Knopf „Ton einschalten“),
                       titleArt.js (animiert das Titelbild, nur solange der Startbildschirm sichtbar ist),
                       controls.js (Steuerungstabelle, füllt alle [data-controls]: Startbildschirm und aufklappbar im Spiel)
+                      fullscreen.js (Knopf „Vollbild“; nur sichtbar, wenn der Browser es kann – iPhone nicht)
 src/audio/engine.js   Web-Audio: Dateien laden, Effekte abspielen, Musikspuren überblenden (nahtlose Loops)
 src/audio/sfx.js      Ton im Spiel: Effekte zu Ereignissen, Musik ab Startbildschirm je Deck + Kampfspur, Lautstärken
 public/assets/audio/  erzeugte MP3s und manifest.json (nicht von Hand bearbeiten, sondern neu erzeugen)
@@ -76,6 +77,8 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
   welcher Klang zu welchem Gegner gehört, steht in `MOVE` (sfx.js).
 - Browser sperren Ton bis zum ersten Klick. Die Engine startet trotzdem beim Laden und plant die Musik ein;
   hörbar wird sie, sobald der Browser es erlaubt. Chrome meldet dabei „AudioContext was not allowed to start“ (Warnung, erwartet).
+- Spielfeldgröße: `fit()` in main.js misst die Höhe über `100svh` und ignoriert Höhenänderungen unter 120 px,
+  damit das Feld beim Scrollen auf iPad/iPhone (ein- und ausfahrende Leisten) nicht springt.
 - Steuerung: Neue Taste oder Bedienung immer auch in `ROWS` in `src/ui/controls.js` eintragen. Elemente mit Klasse `.desk`
   sind auf Touch-Geräten und unter 860 px Breite ausgeblendet.
 - Fremde Grafiken, Sounds oder Musik nach `public/assets/` legen und mit Quelle und Lizenz in `CREDITS.md` eintragen.
