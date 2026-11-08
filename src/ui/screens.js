@@ -43,7 +43,7 @@ function roomBar(e){
   return s+(e.win?' 🚀':'');
 }
 function shareText(e){
-  const cn=CLS[e.cls].n,url=`${location.origin}/#seed-${e.seed}`;
+  const cn=CLS[e.cls].n,url=`${__SITE__||location.origin}/#seed-${e.seed}`;
   const what=e.day?L(`Seed des Tages ${dayLabel(e.day)}`,`Seed of the day ${dayLabel(e.day)}`):`Seed ${e.seed}`;
   const res=e.win?L('entkommen','escaped'):(e.quit?L('abgebrochen','abandoned'):L('gestorben','died'))+L(' in Raum ',' in room ')+e.room+'/'+ROOMS;
   const lines=[`Wrack Ikarus · ${what} · ${cn}`,`${roomBar(e)} ${nf(e.score)} ${L('Punkte','points')} (${res})`,L('Schlägst du das?','Can you beat that?')];
@@ -77,7 +77,8 @@ function renderScores(el,hl){
     li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span>${CLS[s.cls]?CLS[s.cls].n:esc(s.cls)}</span><span class="sd">${esc(s.seed)}${s.day?` <span class="tag-day">${L('Tag','daily')}</span>`:''}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+(+s.room||'?')}</span>${dateSpan(s.date||s.id)}`;el.append(li)});
 }
 /* Gemeinsame Bestenliste über /api/scores (nur auf der Vercel-Seite erreichbar) */
-const API='/api/scores';let sending=false;
+/* Auf Vercel liegt die Bestenliste unter /api; die itch.io-Fassung fragt direkt bei wrack-ikarus.vercel.app an */
+const API=__SITE__+'/api/scores';let sending=false;
 async function fetchGlobal(day){
   try{const r=await fetch(API+(day?'?day='+encodeURIComponent(day):''),{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)return null;const j=await r.json();return Array.isArray(j.scores)?j.scores:null}catch(e){return null}
 }

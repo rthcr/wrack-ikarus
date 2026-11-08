@@ -7,3 +7,6 @@
 node_modules/
 dist/
 __pycache__/
+dist-itch/
+wrack-ikarus-itch.zip
+itch/shot-*.png

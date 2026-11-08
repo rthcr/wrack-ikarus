@@ -23,6 +23,9 @@ import './ui/fullscreen.js';
 
 const $=id=>document.getElementById(id);
 
+// itch.io-Fassung: Die klassische Version liegt nur auf der eigenen Seite
+if(__TARGET__==='itch'){const c=document.querySelector('.classic');if(c)c.remove()}
+
 const game=new Phaser.Game({
   type:Phaser.AUTO,
   parent:'stage',

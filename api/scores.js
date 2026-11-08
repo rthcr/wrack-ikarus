@@ -120,6 +120,13 @@ function clientKey(req) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
+  // Die itch.io-Fassung läuft auf einer fremden Adresse (html-classic.itch.zone) und fragt hier an.
+  // Ohne Cookies oder Anmeldung ist „*“ unbedenklich: Eintragen kann man ohnehin nur geprüfte Runs.
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (!REDIS_URL || !REDIS_TOKEN) {
     res.status(500).json({ error: 'Die Datenbank ist nicht mit dem Projekt verbunden.' });
     return;
@@ -205,7 +212,7 @@ module.exports = async function handler(req, res) {
       res.status(201).json({ id, rank: rank + 1, total, score: e.score, scores: await topList(), daily });
       return;
     }
-    res.setHeader('Allow', 'GET, POST');
+    res.setHeader('Allow', 'GET, POST, OPTIONS');
     res.status(405).json({ error: 'Nur GET und POST sind erlaubt.' });
   } catch (err) {
     console.error(err);

@@ -9,6 +9,9 @@ Live auf Vercel, Code auf GitHub (`rthcr/wrack-ikarus`). Sprache in Code-Komment
 - `npm run dev` – Entwicklungsserver mit Live-Reload
 - `npm run build` – Produktionsbuild nach `dist/` (macht Vercel automatisch)
 - `npm run preview` – den Build lokal ansehen
+- `npm run build:itch` – Fassung für itch.io nach `dist-itch/` und `wrack-ikarus-itch.zip` (relative Pfade, Bestenliste über
+  wrack-ikarus.vercel.app, ohne Vercel-Statistik und klassische Fassung); Texte und Einstellungen in `itch/beschreibung.md`,
+  Bilder: `node scripts/itch/make-cover.mjs`, `node scripts/itch/make-shots.mjs`
 - `npm run check` – Test-Bot spielt 9 Runs direkt gegen die Spiellogik und meldet Abstürze oder hängende Runs
   (mehr Runs: `node scripts/parity-check.mjs 100`)
 - `npm run check:replay` – Bot spielt 30 Runs mit zufälligem Neuladen, jeder Run wird aus seiner Aufzeichnung nachgespielt;
@@ -106,6 +109,9 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
   Startsprache: gespeicherte Wahl (`wrack-ikarus-lang`), sonst Browsersprache. Die klassische Fassung bleibt deutsch.
 - Steuerung: Neue Taste oder Bedienung immer auch in `ROWS` in `src/ui/controls.js` eintragen. Elemente mit Klasse `.desk`
   sind auf Touch-Geräten und unter 860 px Breite ausgeblendet.
+- **Zwei Fassungen:** Pfade zu eigenen Dateien relativ zu `import.meta.env.BASE_URL` bzw. in HTML/CSS absolut (`/…`, Vite passt sie an);
+  Adressen der eigenen Seite über `__SITE__` (leer auf Vercel, wrack-ikarus.vercel.app in der itch.io-Fassung), `__TARGET__` = web/itch.
+  Die API erlaubt Anfragen von fremden Adressen (CORS), damit die itch.io-Fassung die Bestenliste nutzen kann.
 - Fremde Grafiken, Sounds oder Musik nach `public/assets/` legen und mit Quelle und Lizenz in `CREDITS.md` eintragen.
 
 ## Hooks

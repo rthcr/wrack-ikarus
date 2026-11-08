@@ -1,6 +1,6 @@
 // Web-Audio-Engine: lädt Sounddateien aus /assets/audio/, spielt Effekte ab und
 // blendet Musikspuren weich ineinander. Kennt das Spiel nicht, nur Namen und Lautstärken.
-const BASE='/assets/audio/';
+const BASE=import.meta.env.BASE_URL+'assets/audio/';   // '/' auf Vercel, './' in der itch.io-Fassung
 
 let ctx=null,master=null,sfxBus=null,musicBus=null,manifest=null;
 const buffers=new Map(),loading=new Map();

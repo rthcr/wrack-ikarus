@@ -1,6 +1,6 @@
 /* Schriftzug: Big Shoulders Stencil Display (SIL Open Font License, siehe public/fonts/OFL-big-shoulders.txt) */
 @font-face{font-family:'Big Shoulders Stencil';font-weight:800;font-style:normal;font-display:swap;
-  src:url('/fonts/big-shoulders-stencil-800.woff2') format('woff2')}
+  src:url('/fonts/big-shoulders-stencil-800.woff2') format('woff2')}   /* Vite passt den Pfad an die Variante an */
 /* Grundlage */
 :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;font:14px/1.5 system-ui,sans-serif}

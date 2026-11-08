@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "node scripts/parity-check.mjs",
-    "check:replay": "node scripts/replay-check.mjs 30"
+    "check:replay": "node scripts/replay-check.mjs 30",
+    "build:itch": "vite build --mode itch && node scripts/itch/zip.mjs"
   },
   "dependencies": {
     "phaser": "3.90.0"
