@@ -38,7 +38,7 @@ src/render/           Darstellung
 src/ui/               DOM-Oberfläche: hud.js (Statuskonsole), screens.js (Titel/Ende/Bestenlisten), input.js (Tastatur, Knöpfe),
                       settings.js (Menü Einstellungen: Lautstärke/Stumm Musik und Effekte, Bildfilter; Knopf „Ton einschalten“),
                       titleArt.js (animiert das Titelbild, nur solange der Startbildschirm sichtbar ist),
-                      controls.js (Steuerungstabelle, füllt alle [data-controls]: Startbildschirm und aufklappbar im Spiel)
+                      controls.js (Steuerungstabelle, füllt alle [data-controls]: Startbildschirm und aufklappbar im Spiel),
                       fullscreen.js (Knopf „Vollbild“; nur sichtbar, wenn der Browser es kann – iPhone nicht)
 src/audio/engine.js   Web-Audio: Dateien laden, Effekte abspielen, Musikspuren überblenden (nahtlose Loops)
 src/audio/sfx.js      Ton im Spiel: Effekte zu Ereignissen, Musik ab Startbildschirm je Deck + Kampfspur, Lautstärken
