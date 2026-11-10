@@ -15,7 +15,7 @@ import {RW,RH,MON,FLOOR} from '../core/config.js';
 import {cheb,line} from '../core/geometry.js';
 import {S,canInput,canShoot,shootable,nadeOk,pathTo,itemAt,tileClick,setHover} from '../core/game.js';
 import {on} from '../core/bus.js';
-import {TS,itemSpr,monSpr,playerSpr,itemKey,monKey,playerKey} from './sprites.js';
+import {TS,spr,itemSpr,monSpr,playerSpr,itemKey,monKey,playerKey} from './sprites.js';
 import {drawTile,envLights} from './tiles.js';
 
 const hex=c=>parseInt(c.slice(1),16);
@@ -24,7 +24,10 @@ const AMBIENT=.5;   // Grunddunkelheit der Station (0 = hell, 1 = schwarz)
 
 /* Partikelfarben beim Tod, passend zur Farbe der Gegner */
 const DEATH={larva:[0x8bdc5f,0x3f8a2c],drone:[0xffe066,0x9aa6b2,0xffb000],mutant:[0xb779e8,0x5b2e86,0xff4d3d],turret:[0xffe066,0x9aa6b2,0xff4d3d],
-  hunter:[0x5fd3e6,0x227f92,0xffe066],walker:[0xffe066,0x9aa6b2,0x56616e],queen:[0xb779e8,0x8bdc5f,0xffe066]};
+  hunter:[0x5fd3e6,0x227f92,0xffe066],walker:[0xffe066,0x9aa6b2,0x56616e],queen:[0xb779e8,0x8bdc5f,0xffe066],
+  spitter:[0x8bdc5f,0x3f8a2c,0xff4d3d],breaker:[0xb779e8,0x5b2e86,0x9aa6b2]};
+/* Geschütz des Ingenieurs: das Geschütz-Sprite mit blauem Licht */
+const SENTRY_MAP={r:'#5fd3e6',R:'#227f92'};
 const HOVER={drone:1};   // schwebt: kleiner, blasser Schatten
 
 export class GameScene extends Phaser.Scene{
@@ -158,10 +161,13 @@ export class GameScene extends Phaser.Scene{
     }
 
     // Items (mit leichtem Schimmer)
-    const items=G.items.filter(it=>VIS[it.x+it.y*RW]);
+    // dazu ausgelegte Minen (liegen still) und das Geschütz des Ingenieurs
+    const items=G.items.filter(it=>VIS[it.x+it.y*RW]).map(it=>({x:it.x,y:it.y,key:itemKey(it.k),cv:itemSpr(it.k),bob:1,col:0xffe066,i:.3,r:18}));
+    for(const m of G.mines||[])if(VIS[m.x+m.y*RW])items.push({x:m.x,y:m.y,key:'mine_set',cv:itemSpr('mine'),bob:0,col:0xff4d3d,i:.25+.15*Math.sin(time/250),r:14});
+    if(G.sentry){const f=((time/400)|0)%2,s=G.sentry;items.push({x:s.x,y:s.y,key:'sentry#'+f,cv:spr('turret',SENTRY_MAP,'sentry',f),bob:0,col:0x5fd3e6,i:.6,r:34})}
     this.pool(this.itemPool,items.length,2).forEach((img,n)=>{const it=items[n];
-      img.setTexture(this.tex(itemKey(it.k),itemSpr(it.k))).setPosition(it.x*TS,it.y*TS-Math.round(Math.sin(time/400+n)));
-      lights.push({x:it.x*TS+8,y:it.y*TS+8,r:18,col:0xffe066,i:.3})});
+      img.setTexture(this.tex(it.key,it.cv)).setPosition(it.x*TS,it.y*TS-(it.bob?Math.round(Math.sin(time/400+n)):0));
+      lights.push({x:it.x*TS+8,y:it.y*TS+8,r:it.r,col:it.col,i:it.i})});
 
     // Geister: zuletzt gesehene Position unsichtbarer Gegner
     const ghosts=G.mons.filter(m=>m.hp>0&&!VIS[m.x+m.y*RW]&&m.gx!=null);
@@ -239,13 +245,13 @@ export class GameScene extends Phaser.Scene{
     this.flashes=this.flashes.filter(f=>time-f.t0<f.dur);
     for(const f of this.flashes){const k=1-(time-f.t0)/f.dur;lights.push({x:f.x,y:f.y,r:f.r,col:f.col,i:k})}
 
-    this.drawLight(lights);
+    this.drawLight(lights,G.event==='dark'?.78:AMBIENT);
   }
 
   /* Dunkelheit füllen und an jeder Lichtquelle ausradieren; dazu farbiges Licht additiv */
-  drawLight(lights){
+  drawLight(lights,ambient=AMBIENT){
     const dk=this.dark,st=this.lightStamp;
-    dk.clear();dk.fill(0x04060a,AMBIENT);
+    dk.clear();dk.fill(0x04060a,ambient);
     for(const l of lights){st.setScale(l.r/32).setAlpha(Math.min(1,l.i));dk.erase(st,l.x,l.y)}
     while(this.glowPool.length<lights.length)this.glowPool.push(this.add.image(0,0,'light').setDepth(4.6).setBlendMode(Phaser.BlendModes.ADD));
     this.glowPool.forEach((g,n)=>{const l=lights[n];if(!l){g.setVisible(false);return}

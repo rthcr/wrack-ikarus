@@ -12,7 +12,7 @@ const EN={
   eyebrow:'Distress call IKARUS-7 · Orbit Kepler-442b · Radio silence for 41 days',
   lede:'The research station has stopped answering. Between you and the last escape pod lie eight rooms full of creatures and rogue machines, and behind them the brood chamber. If you die, you start over.',
   rule1:'<b>Every round: move + 1 action</b>You move up to 3 tiles (Scout: 4) and get one action: melee, shot, item or ability. With “End turn” the enemies move.',
-  rule2:'<b>Every room is a fight</b>The door behind you locks. Only when all enemies are dead do 2–3 doors open. What waits behind them, you only see once you enter.',
+  rule2:'<b>Every room is a fight</b>The door behind you locks. Only when all enemies are dead do 2–3 doors open. Their displays tell you what waits behind them.',
   rule3:'<b>Cover matters</b>Crates and consoles block line of sight. Enemies only notice you with a clear line of sight; otherwise they search where they last saw you.',
   pickClass:'1 · Choose a class',pickSeed:'2 · Set a seed',roll:'Roll',
   seedHint:'Same seed and same door choices give the same rooms and enemies. Send it to friends and compare your scores.',

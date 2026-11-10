@@ -1,7 +1,7 @@
 // Spiellogik von Wrack Ikarus: Regeln, Runden, Kampf, Items, Gegner-KI.
 // Kein DOM, keine Grafik: Alles, was sichtbar oder hörbar wird, geht als Ereignis über den Bus.
 // Der Regelcode ist aus der klassischen Version übernommen und dort Zeile für Zeile gleich.
-import {RW,RH,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,MON,IT,ITABLE,tierOf} from './config.js';
+import {RW,RH,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,MON,IT,ITABLE,EVENTS,DARK_SIGHT,tierOf} from './config.js';
 import {h32,wpick,dailyDay} from './rng.js';
 import {solidT,cheb,losMap,canStep} from './geometry.js';
 import {sideTile,genRoom} from './roomgen.js';
@@ -57,7 +57,15 @@ const visMonAt=(x,y)=>{const m=monAt(x,y);return m&&VIS[x+y*RW]?m:null};
 const itemAt=(x,y)=>G.items.find(i=>i.x===x&&i.y===y);
 const mAtk=m=>MON[m.t].atk+(m.elite?1:0);
 const mName=m=>MON[m.t].nom;
-const canSee=m=>G.p.invis<=0&&cheb(m,G.p)<=10&&los(m,G.p);
+/* Sichtweite: bei Stromausfall nur wenige Felder, für alle */
+const sight=()=>G.event==='dark'?DARK_SIGHT:99;
+const canSee=m=>G.p.invis<=0&&cheb(m,G.p)<=Math.min(10,sight())&&los(m,G.p);
+/* Bewegung pro Runde: beim Kühlmittelleck 1 Feld weniger (mindestens 1) */
+const slow=mp=>G.event==='coolant'&&mp>1?mp-1:mp;
+/* Geschütz des Ingenieurs und ausgelegte Minen */
+const sentryAt=(x,y)=>!!G.sentry&&G.sentry.x===x&&G.sentry.y===y;
+const mineAt=(x,y)=>(G.mines||[]).find(m=>m.x===x&&m.y===y);
+const SENTRY_RANGE=6;
 
 function log(t,k){G.log.unshift({t,k:k||'info'});if(G.log.length>50)G.log.length=50}
 
@@ -67,7 +75,7 @@ function newMon(t,x,y,elite){const d=MON[t];const hp=elite?Math.round(d.hp*1.6):
 function startRun(seed,cls,opts){
   const c=CLS[cls];
   G={seed,cls,day:opts&&'day' in opts?opts.day:dailyDay(seed),lp0:lp(cls),rec:[],medArm:null,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
-     map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,
+     map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,event:null,mines:[],sentry:null,
      p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   if(unl(0))startPerk();
   finishing=false;busy=false;pendingEnd=false;hover=null;emit('reset');   // main.js schreibt dabei den Seed in die Adresszeile
@@ -83,7 +91,7 @@ const TUT={start:{x:2,y:6},cell:{x:4,y:8},crates:[[7,3],[7,4],[7,5],[7,6],[7,7],
 function startTutorial(){
   const cls='marine',c=CLS[cls];
   G={seed:'TUTORIAL',cls,tut:true,day:null,lp0:0,rec:null,medArm:null,room:1,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32('TUTORIAL!kampf'),nid:1,cause:'',
-     map:[],deco:[],mons:[],items:[],exits:[TUT.exit],entry:'L',name:L('Übungsraum','Training room'),elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,
+     map:[],deco:[],mons:[],items:[],exits:[TUT.exit],entry:'L',name:L('Übungsraum','Training room'),elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,event:null,mines:[],sentry:null,
      p:{x:TUT.start.x,y:TUT.start.y,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){G.map.push(x===0||y===0||x===RW-1||y===RH-1?WALL:FLOOR);G.deco.push(((x*7+y*13)%10)/10)}
   TUT.crates.forEach(([x,y])=>{G.map[x+y*RW]=BLOCK});
@@ -102,13 +110,16 @@ function endTutorial(done){
 
 function enterRoom(idx,entry){
   const d=genRoom(G.seed,idx,G.path,entry);
-  Object.assign(G,{room:idx,map:d.map,deco:d.deco,items:[],exits:d.exits,entry,name:d.name,elite:d.elite,boss:d.boss,bossDead:false,pod:d.pod,round:0,target:null,active:null});
+  Object.assign(G,{room:idx,map:d.map,deco:d.deco,items:d.items||[],exits:d.exits,entry,name:d.name,elite:d.elite,boss:d.boss,bossDead:false,pod:d.pod,round:0,target:null,active:null,event:d.event||null,mines:[],sentry:null});
   G.mons=d.mons.map(m=>newMon(m.t,m.x,m.y,m.elite));
   G.p.x=d.start.x;G.p.y=d.start.y;
+  if(G.event==='alarm')G.mons.forEach(m=>{m.aware=true;m.known={x:G.p.x,y:G.p.y}});
   log(L(`Raum ${idx}/${ROOMS}: ${d.name}. Die Tür hinter dir verriegelt.`,`Room ${idx}/${ROOMS}: ${d.name}. The door locks behind you.`),'info');
   if(d.boss)log(L('Die Wände sind mit Harz überzogen. Etwas Großes atmet.','The walls are coated in resin. Something big is breathing.'),'warn');
   else if(d.elite)log(L('Schwere Schritte irgendwo hinter der Deckung.','Heavy footsteps somewhere behind the cover.'),'warn');
+  if(G.event)log(`${EVENTS[G.event].n}: ${EVENTS[G.event].d}`,'warn');
   startRound();
+  if(G.event)banner(EVENTS[G.event].n,'enemy');
 }
 
 /* ---------- Runden ---------- */
@@ -119,7 +130,7 @@ function startRound(){
   if(p.shield>0){p.shield--;if(!p.shield)log(L('Der Schild bricht zusammen.','The shield collapses.'),'warn')}
   if(p.stim>0){p.stim--;if(!p.stim)log(L('Das Stimulans lässt nach.','The stim wears off.'),'dim')}
   if(p.invis>0){p.invis--;if(!p.invis)log(L('Das Tarnfeld erlischt.','The cloak field fades.'),'warn')}
-  p.mp=CLS[G.cls].mp;p.act=1;G.phase='player';G.target=null;pendingEnd=false;
+  p.mp=slow(CLS[G.cls].mp);p.act=1;G.phase='player';G.target=null;pendingEnd=false;
   log(L(`Runde ${G.round} · dein Zug`,`Round ${G.round} · your turn`),'sep');
   banner(L(`Runde ${G.round} · Dein Zug`,`Round ${G.round} · Your turn`),'you');
   computeVis();updateUI();
@@ -137,7 +148,8 @@ async function enemyPhase(){
   G.phase='enemy';G.target=null;busy=true;hover=null;
   log(L('Gegnerzug','Enemy turn'),'sep');banner(L('Gegnerzug','Enemy turn'),'enemy');computeVis();updateUI();
   const run=G;   // Wird inzwischen ein neuer Run gestartet, hört dieser Gegnerzug auf
-  await sleep(500);
+  await sleep(500);if(G!==run)return;
+  await sentryTurn();if(G!==run)return;
   const list=G.mons.filter(m=>m.hp>0);
   for(const m of list){
     if(G!==run||!live())break;if(m.hp<=0)continue;
@@ -146,20 +158,37 @@ async function enemyPhase(){
   }
   if(G!==run)return;
   busy=false;
-  if(live()&&G.phase==='enemy')startRound();
+  if(!live()||G.phase!=='enemy')return;
+  // Geschütz oder Mine haben im Gegnerzug den letzten Gegner erledigt: Raum ist gesichert
+  if(!G.mons.some(m=>m.hp>0)){G.phase='player';checkClear();updateUI();return}
+  startRound();
+}
+/* Geschütz des Ingenieurs: schießt zu Beginn des Gegnerzugs auf den nächsten Gegner in seiner Sicht */
+async function sentryTurn(){
+  const s=G.sentry;if(!s)return;const run=G;
+  const ts=G.mons.filter(m=>m.hp>0&&cheb(m,s)<=Math.min(SENTRY_RANGE,sight())&&los(s,m)).sort((a,b)=>cheb(a,s)-cheb(b,s)||a.id-b.id);
+  if(ts.length){
+    const m=ts[0],d=MON[m.t];
+    fx.push({type:'line',a:{x:s.x,y:s.y},b:{x:m.x,y:m.y},col:'#5fd3e6',t0:performance.now(),dur:200});SFX.zap();
+    if(rnd()<.85){const dmg=Math.max(1,3+(unl(1)?2:0)+ri(0,1)-Math.floor(d.def/2));log(L(`Dein Geschütz trifft ${d.acc}: ${dmg} Schaden.`,`Your sentry gun hits ${d.acc}: ${dmg} damage.`));hitMon(m,dmg)}
+    else log(L(`Dein Geschütz verfehlt ${d.acc}.`,`Your sentry gun misses ${d.acc}.`),'dim');
+    G.mons=G.mons.filter(x=>x.hp>0);computeVis();updateUI();await sleep(260);if(G!==run)return;
+  }
+  if(--s.ttl<=0){G.sentry=null;log(L('Das Geschütz ist leer und schaltet sich ab.','The sentry gun runs dry and shuts down.'),'dim');computeVis();updateUI()}
 }
 
 /* ---------- Sicht & Reichweite ---------- */
 function computeVis(){
   VIS=new Uint8Array(RW*RH);const p=G.p;
-  for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){if((x===p.x&&y===p.y)||los(p,{x,y}))VIS[x+y*RW]=1}
+  const far=sight();
+  for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){if((x===p.x&&y===p.y)||(cheb(p,{x,y})<=far&&los(p,{x,y})))VIS[x+y*RW]=1}
   for(const m of G.mons)if(m.hp>0&&VIS[m.x+m.y*RW]){m.gx=m.x;m.gy=m.y}
   REACH=new Int16Array(RW*RH).fill(-1);PARENT=new Int16Array(RW*RH).fill(-1);
   if(G.phase!=='player'&&G.phase!=='explore')return;
   const max=G.phase==='player'?p.mp:999;
   const s=p.x+p.y*RW;REACH[s]=0;const q=[s];let qi=0;
   while(qi<q.length){const i=q[qi++],x=i%RW,y=(i/RW)|0;if(REACH[i]>=max)continue;
-    for(const[dx,dy]of D8){const nx=x+dx,ny=y+dy;if(!canStep(G.map,x,y,nx,ny))continue;const j=nx+ny*RW;if(REACH[j]>=0)continue;if(visMonAt(nx,ny))continue;REACH[j]=REACH[i]+1;PARENT[j]=i;q.push(j)}}
+    for(const[dx,dy]of D8){const nx=x+dx,ny=y+dy;if(!canStep(G.map,x,y,nx,ny))continue;const j=nx+ny*RW;if(REACH[j]>=0)continue;if(visMonAt(nx,ny)||sentryAt(nx,ny))continue;REACH[j]=REACH[i]+1;PARENT[j]=i;q.push(j)}}
 }
 function pathTo(i){const out=[];let c=i;while(c>=0&&c!==G.p.x+G.p.y*RW){out.push(c);c=PARENT[c]}return out.reverse()}
 
@@ -179,7 +208,7 @@ function dropLoot(m,d){
   const chance=(m.elite||d.boss)?1:m.t==='larva'?.3:.6;
   if(rnd()>=chance)return;
   const k=d.boss?'med':(d.robot&&rnd()<.5)?'cell':wpick(ITABLE[tierOf(G.room)],rnd);
-  const spot=[[0,0],...D8].map(([dx,dy])=>[m.x+dx,m.y+dy]).find(([x,y])=>x>0&&y>0&&x<RW-1&&y<RH-1&&G.map[x+y*RW]===FLOOR&&!itemAt(x,y)&&!(x===G.p.x&&y===G.p.y)&&!monAt(x,y));
+  const spot=[[0,0],...D8].map(([dx,dy])=>[m.x+dx,m.y+dy]).find(([x,y])=>x>0&&y>0&&x<RW-1&&y<RH-1&&G.map[x+y*RW]===FLOOR&&!itemAt(x,y)&&!(x===G.p.x&&y===G.p.y)&&!monAt(x,y)&&!sentryAt(x,y));
   if(!spot)return;
   G.items.push({k,x:spot[0],y:spot[1]});
   fx.push({type:'drop',x:spot[0],y:spot[1],t0:performance.now(),dur:600});
@@ -193,7 +222,7 @@ function gainXp(x){
     log(L(`Stufe ${p.lvl}! Max. TP +2. Wähle ein Upgrade.`,`Level ${p.lvl}! Max HP +2. Choose an upgrade.`),'good');SFX.lvl()}
   if(G.picks&&!G.offer)offerPerks();
 }
-function startPerk(){const p=G.p;if(G.cls==='marine'){p.max+=5;p.hp+=5}else if(G.cls==='tech')p.ammo+=4}
+function startPerk(){const p=G.p;if(G.cls==='marine'){p.max+=5;p.hp+=5}else if(G.cls==='tech')p.ammo+=4;else if(G.cls==='eng'&&p.inv.length<INV)p.inv.push('nade')}
 function offerPerks(){
   const ks=Object.keys(PERKS).filter(k=>!PERKS[k].ok||PERKS[k].ok());
   G.offer=[];while(G.offer.length<3&&ks.length)G.offer.push(ks.splice(Math.floor(rnd()*ks.length),1)[0]);
@@ -270,6 +299,15 @@ function ability(){
     useAction();log(L('EMP-Impuls! Alles in Sicht erstarrt.','EMP pulse! Everything in sight freezes.'),'info');SFX.emp();
     fx.push({type:'ring',x:p.x,y:p.y,t0:performance.now(),dur:450});
     vis.forEach(m=>{const d=MON[m.t];m.stun=Math.max(m.stun,d.boss?1:unl(1)?3:2);if(d.robot)hitMon(m,6)});
+  }else if(G.cls==='eng'){
+    // Geschütz auf ein freies Nachbarfeld: möglichst nah am nächsten sichtbaren Gegner, sonst das erste freie
+    const near=G.mons.filter(m=>m.hp>0&&VIS[m.x+m.y*RW]).sort((a,b)=>cheb(a,p)-cheb(b,p)||a.id-b.id)[0];
+    const spots=D8.map(([dx,dy])=>({x:p.x+dx,y:p.y+dy})).filter(t=>canStep(G.map,p.x,p.y,t.x,t.y)&&!monAt(t.x,t.y)&&!sentryAt(t.x,t.y));
+    if(!spots.length){log(L('Kein freies Feld neben dir für das Geschütz.','No free tile next to you for the sentry gun.'),'dim');updateUI();return}
+    let best=spots[0];if(near)for(const t of spots)if(cheb(t,near)<cheb(best,near))best=t;
+    useAction();G.sentry={x:best.x,y:best.y,ttl:unl(2)?99:4};
+    log(unl(2)?L('Geschütz aufgestellt. Es feuert bis zum Ende des Kampfes.','Sentry gun deployed. It fires until the fight is over.'):L('Geschütz aufgestellt. Es feuert 4 Runden lang.','Sentry gun deployed. It fires for 4 rounds.'),'info');SFX.pick();
+    fx.push({type:'ring',x:best.x,y:best.y,t0:performance.now(),dur:300});
   }else{
     p.act=0;p.invis=unl(1)?3:2;G.mons.forEach(m=>{m.known=null});log(L('Tarnfeld aktiv. Die Gegner verlieren deine Spur.','Cloak field active. The enemies lose your trail.'),'info');SFX.emp();
   }
@@ -312,9 +350,19 @@ function useItem(idx){
     case'stim':if(!combat){log(L('Spar dir das Stimulans für den Kampf.','Save the stim for a fight.'),'dim');updateUI();return}p.stim=3;log(L('Kampfstimulans: Angriff +3 für 3 Runden.','Combat stim: attack +3 for 3 rounds.'),'info');SFX.pick();break;
     case'scan':if(!combat){log(L('Der Melder zeigt nichts. Der Raum ist leer.','The tracker shows nothing. The room is empty.'),'dim');updateUI();return}
       G.mons.forEach(m=>{if(m.hp>0){m.gx=m.x;m.gy=m.y}});log(L('Bewegungsmelder: alle Gegner markiert.','Motion tracker: all enemies marked.'),'info');SFX.emp();break;
+    case'mine':if(!combat){log(L('Spar dir die Mine für den Kampf.','Save the mine for a fight.'),'dim');updateUI();return}
+      if(mineAt(p.x,p.y)){log(L('Hier liegt schon eine Mine.','There is already a mine here.'),'dim');updateUI();return}
+      G.mines.push({x:p.x,y:p.y});log(L('Mine gelegt. Der erste Gegner, der darauf tritt, löst sie aus.','Mine placed. The first enemy to step on it sets it off.'),'info');SFX.drop();break;
+    case'flash':{if(!combat){log(L('Kein Ziel für die Blendgranate.','No target for the flash grenade.'),'dim');updateUI();return}
+      const vis=G.mons.filter(m=>m.hp>0&&VIS[m.x+m.y*RW]);
+      if(!vis.length){log(L('Kein Gegner in Sicht.','No enemy in sight.'),'dim');updateUI();return}
+      vis.forEach(m=>{m.stun=Math.max(m.stun,1);m.aware=true;m.known={x:p.x,y:p.y}});fx.push({type:'ring',x:p.x,y:p.y,t0:performance.now(),dur:350});
+      log(L('Blendgranate! Alle Gegner in Sicht sind 1 Runde gelähmt.','Flash grenade! All enemies in sight are stunned for 1 round.'),'info');SFX.emp();break}
+    case'barrier':if(!combat){log(L('Spar dir den Notschild für den Kampf.','Save the emergency shield for a fight.'),'dim');updateUI();return}
+      p.shield=Math.max(p.shield,1);log(L('Notschild aktiv: Bis zu deinem nächsten Zug richten Gegner keinen Schaden an.','Emergency shield active: enemies deal no damage until your next turn.'),'info');SFX.emp();break;
     case'phase':{if(!combat){log(L('Kein Grund zu fliehen.','No reason to run.'),'dim');updateUI();return}
       let best=[],bd=-1;
-      for(let i=0;i<RW*RH;i++){if(G.map[i]!==FLOOR)continue;const x=i%RW,y=(i/RW)|0;if(monAt(x,y)||itemAt(x,y))continue;
+      for(let i=0;i<RW*RH;i++){if(G.map[i]!==FLOOR)continue;const x=i%RW,y=(i/RW)|0;if(monAt(x,y)||itemAt(x,y)||sentryAt(x,y))continue;
         const md=Math.min(99,...G.mons.filter(m=>m.hp>0).map(m=>cheb(m,{x,y})));if(md>bd){bd=md;best=[[x,y]]}else if(md===bd)best.push([x,y])}
       const[x,y]=best[Math.floor(rnd()*best.length)];p.x=x;p.y=y;G.mons.forEach(m=>{if(!canSee(m))m.known=null});
       log(L('Phasensprung. Dir ist übel, aber du bist weg.','Phase jump. You feel sick, but you are gone.'),'info');SFX.emp();break}
@@ -381,7 +429,7 @@ function stepPlayer(dx,dy){
     m.gx=m.x;m.gy=m.y;melee(m);return}
   const t=G.map[nx+ny*RW];
   if(G.phase==='explore'&&(t===EXIT||(t===POD&&G.bossDead))&&!(dx&&dy)){goThrough(nx,ny);return}
-  if(!canStep(G.map,p.x,p.y,nx,ny))return;
+  if(!canStep(G.map,p.x,p.y,nx,ny)||sentryAt(nx,ny))return;
   if(inCombat()&&p.mp<=0){log(L('Keine Bewegung mehr. Nutze deine Aktion oder beende den Zug.','No movement left. Use your action or end your turn.'),'dim');updateUI();return}
   p.x=nx;p.y=ny;if(inCombat())p.mp--;SFX.step();
   pickup();computeVis();updateUI();autoEnd();
@@ -419,13 +467,15 @@ function tileClick(tx,ty){
 /* ---------- Raum gesichert & Türen ---------- */
 function checkClear(){
   if(G.phase!=='player'||G.mons.some(m=>m.hp>0))return;
-  G.phase='explore';G.cleared++;G.mons=[];G.target=null;const p=G.p;
+  G.phase='explore';G.cleared++;G.mons=[];G.target=null;G.sentry=null;G.mines=[];const p=G.p;
   const heal=Math.min(3,p.max-p.hp);p.hp+=heal;
-  G.exits.forEach(e=>{const t=sideTile(e.side,e.pos);G.map[t.x+t.y*RW]=EXIT});
+  // Türen öffnen. Die Anzeige an jeder Tür verrät, was dahinter wartet (der nächste Raum steht durch Seed und Weg schon fest).
+  G.exits.forEach(e=>{const t=sideTile(e.side,e.pos);G.map[t.x+t.y*RW]=EXIT;
+    if(!G.tut){const d=genRoom(G.seed,G.room+1,G.path+e.side+e.pos+'.',OPP[e.side]);e.hint={n:d.mons.length,elite:d.elite?1:0,event:d.event||null,boss:d.boss?1:0}}});
   if(G.boss){log(L('Raum gesichert. Die Rettungskapsel ist entriegelt. Steig ein!','Room secured. The escape pod is unlocked. Get in!'),'good');banner(L('Kapsel entriegelt','Pod unlocked'),'good');SFX.win()}
   else{log(L(`Raum gesichert in ${rounds_(G.round)}.${heal?` Atempause: +${heal} TP.`:''}${G.items.length?' Vergiss die Beute nicht.':''}`,
              `Room secured in ${rounds_(G.round)}.${heal?` Breather: +${heal} HP.`:''}${G.items.length?' Don’t forget the loot.':''}`),'good');
-    log(G.exits.length>1?L(`${G.exits.length} Türen öffnen sich. Wähle eine. Was dahinter liegt, weiß niemand.`,`${G.exits.length} doors open. Pick one. Nobody knows what lies behind them.`)
+    log(G.exits.length>1?L(`${G.exits.length} Türen öffnen sich. Die Anzeige an jeder Tür verrät, was dahinter wartet.`,`${G.exits.length} doors open. The display on each door tells you what waits behind it.`)
       :L('Eine schwere Schleuse öffnet sich. Dahinter: die Brutkammer.','A heavy airlock opens. Behind it: the brood chamber.'),'info');
     banner(L('Raum gesichert','Room secured'),'good');SFX.lvl()}
   computeVis();
@@ -442,12 +492,12 @@ function goThrough(x,y){
 /* ---------- Gegner-KI ---------- */
 function distTo(tx,ty,self){
   const d=new Int16Array(RW*RH).fill(-1);d[tx+ty*RW]=0;const q=[tx+ty*RW];let qi=0;
-  const block=(x,y)=>{const o=monAt(x,y);return o&&o!==self};
+  const block=(x,y)=>{const o=monAt(x,y);return (o&&o!==self)||sentryAt(x,y)};
   while(qi<q.length){const i=q[qi++],x=i%RW,y=(i/RW)|0;
     for(const[dx,dy]of D8){const nx=x+dx,ny=y+dy;if(!canStep(G.map,x,y,nx,ny))continue;const j=nx+ny*RW;if(d[j]>=0||block(nx,ny))continue;d[j]=d[i]+1;q.push(j)}}
   return d;
 }
-function freeFor(m,x,y){return canStep(G.map,m.x,m.y,x,y)&&!monAt(x,y)&&!(x===G.p.x&&y===G.p.y)}
+function freeFor(m,x,y){return canStep(G.map,m.x,m.y,x,y)&&!monAt(x,y)&&!sentryAt(x,y)&&!(x===G.p.x&&y===G.p.y)}
 async function monTurn(m){
   const d=MON[m.t],p=G.p,run=G,gone=()=>G!==run;
   const shown=()=>VIS[m.x+m.y*RW];
@@ -469,15 +519,23 @@ async function monTurn(m){
     if(!sees)return false;
     if(cheb(m,p)===1&&!d.nomelee){if(shown())await sleep(150);if(gone())return true;monAttack(m,mAtk(m),'hit');await sleep(300);return true}
     if(d.range&&cheb(m,p)<=d.range&&(!d.boss||(cheb(m,p)>1&&m.spit<=0))){
-      fx.push({type:'line',a:{x:m.x,y:m.y},b:{x:p.x,y:p.y},col:d.boss?'#8bdc5f':'#ff4d3d',t0:performance.now(),dur:240});
-      if(d.boss){m.spit=2;SFX.spit();monAttack(m,6,'spit')}else{SFX.zap();monAttack(m,mAtk(m),'shoot')}
+      fx.push({type:'line',a:{x:m.x,y:m.y},b:{x:p.x,y:p.y},col:d.boss||d.acid?'#8bdc5f':'#ff4d3d',t0:performance.now(),dur:240});
+      if(d.boss){m.spit=2;SFX.spit();monAttack(m,6,'spit')}else if(d.acid){SFX.spit();monAttack(m,mAtk(m),'spit')}else{SFX.zap();monAttack(m,mAtk(m),'shoot')}
       await sleep(320);return true;
     }
     return false;
   };
   if(await attack()||gone())return;
   if(!G.alive)return;
-  for(let s=0;s<d.mp;s++){
+  // Brecher: zertrümmert Deckung, die zwischen ihm und seinem Ziel steht, statt außen herum zu laufen (kostet seinen Zug)
+  if(d.smash&&!(sees&&cheb(m,p)===1)){
+    const here=cheb(m,m.known);let hit=null,hv=here;
+    for(const[dx,dy]of D8){const x=m.x+dx,y=m.y+dy;if(x<1||y<1||x>=RW-1||y>=RH-1||G.map[x+y*RW]!==BLOCK)continue;const v=cheb({x,y},m.known);if(v<hv){hv=v;hit={x,y}}}
+    if(hit){G.map[hit.x+hit.y*RW]=FLOOR;fx.push({type:'boom',x:hit.x,y:hit.y,t0:performance.now(),dur:300});SFX.boom();computeVis();
+      if(shown()||VIS[hit.x+hit.y*RW])log(L(`${d.nom} zertrümmert die Deckung.`,`${d.nom} smashes the cover.`),'warn');
+      updateUI();await sleep(350);return}
+  }
+  for(let s=0;s<slow(d.mp);s++){
     if(sees&&cheb(m,p)===1)break;
     if(!sees&&m.x===m.known.x&&m.y===m.known.y)break;
     if(sees&&d.range&&!d.boss&&cheb(m,p)<=d.range)break;
@@ -488,6 +546,10 @@ async function monTurn(m){
     const wasShown=shown();
     m.x=best[0];m.y=best[1];computeVis();
     if(wasShown||shown()){emit('sfx','move',m.t);updateUI();await sleep(130);if(gone())return}
+    const mine=mineAt(m.x,m.y);
+    if(mine){G.mines.splice(G.mines.indexOf(mine),1);const dmg=Math.max(1,8-Math.floor(d.def/2));
+      fx.push({type:'boom',x:m.x,y:m.y,t0:performance.now(),dur:400});SFX.boom();log(L(`${d.nom} tritt auf deine Mine: ${dmg} Schaden.`,`${d.nom} steps on your mine: ${dmg} damage.`),'good');
+      hitMon(m,dmg);computeVis();updateUI();await sleep(300);if(gone()||m.hp<=0)return}
     sees=canSee(m);if(sees)notice();
   }
   if(await attack())return;
@@ -535,6 +597,9 @@ function validRun(data){
     if(G.offer!=null&&!(Array.isArray(G.offer)&&G.offer.every(k=>PERKS[k])))return false;
     if(G.target!=null&&!(typeof G.target==='object'&&['shoot','nade'].includes(G.target.kind)))return false;
     if(G.rec!=null&&!Array.isArray(G.rec))return false;
+    if(G.event!=null&&!EVENTS[G.event])return false;
+    if(!Array.isArray(G.mines)||!G.mines.every(onMap))return false;
+    if(G.sentry!=null&&!(onMap(G.sentry)&&isNum(G.sentry.ttl)))return false;
     if(G.medArm!=null&&!(isInt(G.medArm.idx,0,INV-1)&&isInt(G.medArm.seq,0,1e7)))return false;
     return true;
   }catch(e){return false}
@@ -594,4 +659,5 @@ export {S,timing,PERKS,ACTIONS,runHash,
   endTurn_ as endTurn,stepPlayer_ as stepPlayer,tileClick_ as tileClick,fireButton_ as fireButton,ability_ as ability,ability2_ as ability2,
   useItem_ as useItem,dropItem_ as dropItem,pickupHere_ as pickupHere,takePerk_ as takePerk,cancelTarget_ as cancelTarget,
   quitRun,restore,validRun,setScreen,setSel,setHover,computeVis,updateUI,
+  sentryAt,mineAt,sight,
   atk,def,need,dodge,abCd,score,live,canInput,inCombat,monAt,visMonAt,itemAt,canSee,canShoot,shootable,shootTargets,nadeOk,pathTo,unl,lp};

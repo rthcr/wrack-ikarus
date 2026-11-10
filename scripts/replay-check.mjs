@@ -7,12 +7,12 @@ import { runBot } from './bot.mjs';
 const mem = new Map();
 // Neuladen auch mitten im Ablauf (Laufweg, Gegnerzug): nach einem Speichern im nächsten Mikroschritt
 let midReload = null;
-const browserStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => { mem.set(k, String(v)); if (k === 'wrack-ikarus-run-v3' && midReload) midReload(); }, removeItem: k => mem.delete(k) };
+const browserStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => { mem.set(k, String(v)); if (k === 'wrack-ikarus-run-v4' && midReload) midReload(); }, removeItem: k => mem.delete(k) };
 globalThis.localStorage = browserStorage;
 const game = await import('../src/core/game.js');
 const { replayRun } = await import('../src/core/replay.js');
-const RUNKEY = 'wrack-ikarus-run-v3';
-const classes = ['marine', 'tech', 'scout'];
+const RUNKEY = 'wrack-ikarus-run-v4';
+const classes = ['marine', 'tech', 'scout', 'eng'];
 const runs = Number(process.argv[2] || 30);
 const human = process.argv.includes('--human');   // Zugende abwarten wie ein Mensch
 const FIELDS = ['seed', 'cls', 'room', 'win', 'cleared', 'rounds', 'kills', 'lvl', 'xp', 'score'];
@@ -23,7 +23,7 @@ let z = 12345; const rand = () => ((z = (z * 1103515245 + 12345) >>> 0) / 429496
 let bad = 0, reloads = 0, events = 0, ms = 0, maxSpins = 0;
 for (let i = 0; i < runs; i++) {
   globalThis.localStorage = browserStorage; game.timing.scale = 0;
-  const seed = 'R' + i, cls = classes[i % 3];
+  const seed = 'R' + i, cls = classes[i % 4];
   game.startRun(seed, cls);
   const S = game.S; let n = 0, myReloads = 0, pending = false;
   midReload = () => {
@@ -34,7 +34,7 @@ for (let i = 0; i < runs; i++) {
   await runBot({
     G: () => S.G, busy: () => S.busy, REACH: () => S.REACH, VIS: () => S.VIS,
     tileClick: game.tileClick, stepPlayer: game.stepPlayer, fireButton: game.fireButton, endTurn: game.endTurn,
-    useItem: game.useItem, shootTargets: game.shootTargets, takePerk: game.takePerk,
+    useItem: game.useItem, ability: game.ability, shootTargets: game.shootTargets, takePerk: game.takePerk,
   }, async () => {
     await new Promise(r => setTimeout(r, human ? 2 : 0));
     // gelegentlich „neu laden“: zuletzt gespeicherten Stand wie beim Seitenstart wiederherstellen

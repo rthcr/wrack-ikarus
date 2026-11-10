@@ -1,5 +1,5 @@
 // Statuskonsole, Rundenleiste, Inventar und Log (DOM). Wird bei jedem "change" neu gezeichnet.
-import {RW,ROOMS,INV,TIERNAME,CLS,AB2,MON,IT,tierOf,roomTitle} from '../core/config.js';
+import {RW,ROOMS,INV,TIERNAME,CLS,AB2,MON,IT,EVENTS,tierOf,roomTitle} from '../core/config.js';
 import {L,nf} from '../core/i18n.js';
 import {cheb} from '../core/geometry.js';
 import {S,PERKS,atk,def,need,score,dodge,canInput,canSee,itemAt,unl,useItem,dropItem,takePerk} from '../core/game.js';
@@ -37,7 +37,11 @@ function renderHud(){
   const st=[[L('Angriff','Attack'),atk()+(p.stim>0?' (Stim)':'')],[L('Panzerung','Armor'),def()],[L('Stufe','Level'),`${p.lvl} · ${L('EP','XP')} ${p.xp}/${need(p.lvl)}`],[L('Abschüsse','Kills'),G.kills],[L('Runden gesamt','Total rounds'),G.rounds],[L('Punkte','Score'),nf(score())]];
   $('stats').innerHTML=st.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
   const chips=[];if(p.stim>0)chips.push(`<span class="chip a">${L('Stimulans','Stim')} ${p.stim}</span>`);if(p.invis>0)chips.push(`<span class="chip">${L('Getarnt','Cloaked')}</span>`);if(p.shield>0)chips.push(`<span class="chip">${L('Schild','Shield')} ${p.shield}</span>`);
+  if(G.sentry)chips.push(`<span class="chip">${L('Geschütz','Sentry')}${G.sentry.ttl<50?' '+G.sentry.ttl:''}</span>`);
+  if(G.mines&&G.mines.length)chips.push(`<span class="chip a">${L('Minen','Mines')} ${G.mines.length}</span>`);
   $('chips').innerHTML=chips.join('');
+  // Raum-Ereignis
+  const ev=G.event&&EVENTS[G.event];$('eventTxt').hidden=!ev;if(ev)$('eventTxt').innerHTML=`<b style="color:${EVCOL[G.event]}">${ev.n}</b> ${ev.d}`;
   $('equip').innerHTML=`<dt>${L('Waffe','Weapon')}</dt><dd>${p.wpn?`${IT[p.wpn].n} (+${IT[p.wpn].v})`:L('Fäuste','Fists')}</dd><dt>${L('Schutz','Armor')}</dt><dd>${p.arm?`${IT[p.arm].n} (+${IT[p.arm].v})`:L('Overall','Overalls')}</dd><dt>Blaster</dt><dd>${p.ammo} ${L('Schuss','rounds')}</dd>${CLS[G.cls].side?`<dt>${L('Reserve','Backup')}</dt><dd>${CLS[G.cls].side}</dd>`:''}`;
   const inv=$('inv');inv.innerHTML='';
   for(let i=0;i<INV;i++){const k=p.inv[i];const row=document.createElement('div');row.className='slotrow';const b=document.createElement('button');b.className='slot';row.append(b);
@@ -55,7 +59,7 @@ function renderHud(){
     let s,cl='';if(m.stun>0){s=L(`gelähmt (${m.stun})`,`stunned (${m.stun})`);cl='stun'}else if(!m.aware){s=L('hat dich noch nicht bemerkt','hasn’t noticed you yet')}else if(canSee(m)){s=L('sieht dich','sees you');cl='see'}else{s=L('sucht dich','searching for you')}
     const open=openMon===m.id;
     return`<button class="row" data-mid="${m.id}" aria-expanded="${open}"><img alt="" src="${iconURL(monSpr(m.t),'m_'+m.t,32)}"><span>${d.n}${m.elite?' (Elite)':''}</span><span class="mbar"><i style="width:${Math.max(0,m.hp/m.max*100)}%"></i></span><span class="st ${cl}">${s} · ${cheb(m,p)} ${cheb(m,p)===1?L('Feld','tile'):L('Felder','tiles')}</span></button>${open?monInfo(m):''}`}).join('')
-    :`<p class="muted">${G.phase==='explore'?L('Raum gesichert.','Room secured.'):L('Niemand in Sichtlinie. Hinter der Deckung kann trotzdem etwas lauern.','Nobody in line of sight. Something may still lurk behind the cover.')}</p>`;
+    :G.phase==='explore'&&G.exits.some(e=>e.hint)?doorList(G):`<p class="muted">${G.phase==='explore'?L('Raum gesichert.','Room secured.'):L('Niemand in Sichtlinie. Hinter der Deckung kann trotzdem etwas lauern.','Nobody in line of sight. Something may still lurk behind the cover.')}</p>`;
   const ab=$('abBtn');$('abName').textContent=c.ab;
   $('abSub').textContent=G.phase!=='player'?L('nur im Kampf','combat only'):p.cd>0?L(`lädt ${p.cd} Rd. · R`,`charging ${p.cd} rd. · R`):p.act>0?L('bereit · R','ready · R'):L('Aktion verbraucht','action used');
   ab.classList.toggle('ready',G.phase==='player'&&p.cd===0&&p.act>0);ab.disabled=!(G.phase==='player'&&!busy);
@@ -73,6 +77,16 @@ function renderHud(){
   $('log').innerHTML=G.log.slice(0,9).map(l=>`<p class="${LOGK.includes(l.k)?l.k:'info'}">${esc(l.t)}</p>`).join('');
 }
 const LOGK=['info','warn','good','hurt','dim','sep'];
+/* ---------- Raum-Ereignisse und Türen ---------- */
+const EVCOL={dark:'#b779e8',coolant:'#5fd3e6',cache:'#8bdc5f',alarm:'#ff4d3d'};   // gleiche Farben wie die Anzeige an der Tür (render/tiles.js)
+const SIDE={L:()=>L('Tür links','Door left'),R:()=>L('Tür rechts','Door right'),T:()=>L('Tür oben','Door top'),B:()=>L('Tür unten','Door bottom')};
+/* Nach dem Kampf: Was wartet hinter welcher Tür? */
+function doorList(G){
+  return`<p class="muted">${L('Raum gesichert. Hinter den Türen:','Room secured. Behind the doors:')}</p>`+G.exits.filter(e=>e.hint).map(e=>{const h=e.hint,ev=h.event&&EVENTS[h.event];
+    const what=h.boss?L('die Brutkammer','the brood chamber'):L(`${h.n} Gegner`,`${h.n} ${h.n===1?'enemy':'enemies'}`)+(h.elite?L(', davon ein Elite-Gegner',', one of them elite'):'');
+    return`<div class="door"><b>${SIDE[e.side]()}</b><span>${what}</span>${ev?`<span class="ev"><i style="background:${EVCOL[h.event]}"></i>${ev.n}: ${ev.d}</span>`:''}</div>`}).join('');
+}
+
 /* ---------- Gegner-Infos ----------
    Klick auf einen Gegner in der Liste klappt seine Werte auf. Die Zahlen folgen den Regeln in core/game.js
    (monAttack, melee, shootAt): Dort ändern heißt hier mitändern. */
@@ -84,6 +98,8 @@ const MONINFO={
   turret:()=>L('Steht fest und schießt bis zu 6 Felder weit, sobald es dich sieht. Kein Nahkampf. Maschine. Deckung hilft.','Fixed in place and shoots up to 6 tiles as soon as it sees you. No melee. Machine. Cover helps.'),
   hunter:()=>L('Sehr schnell: Er holt dich fast immer ein. Schwäch ihn, bevor er bei dir ist.','Very fast: it almost always catches you. Weaken it before it reaches you.'),
   walker:()=>L('Schwer gepanzert, Schüsse und Schläge verlieren viel Wirkung. Langsam. Maschine.','Heavily armored, shots and blows lose much of their effect. Slow. Machine.'),
+  spitter:()=>L('Spuckt Säure bis zu 4 Felder weit und hält dabei Abstand. Hält wenig aus: schnell erledigen oder in Deckung gehen.','Spits acid up to 4 tiles and keeps its distance. Fragile: kill it quickly or get into cover.'),
+  breaker:()=>L('Zertrümmert Kisten und Konsolen, die zwischen euch stehen, statt außen herum zu laufen. Das kostet ihn jeweils einen Zug.','Smashes crates and consoles standing between you instead of walking around them. Each one costs it a turn.'),
   queen:()=>L('Boss. Spuckt bis zu 5 Felder weit (6 Schaden, jede zweite Runde) und stößt alle 3 Runden eine Larve aus. Der EMP-Impuls lähmt sie nur 1 Runde.','Boss. Spits up to 5 tiles (6 damage, every other round) and expels a larva every 3 rounds. The EMP pulse stuns her for only 1 round.'),
 };
 const range=(a,b)=>a===b?`${a}`:`${a}–${b}`;

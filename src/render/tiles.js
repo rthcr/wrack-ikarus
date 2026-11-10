@@ -2,6 +2,10 @@
 // blinken und Bildschirme laufen). Außerdem: welche Kacheln Licht abgeben.
 import {RW,RH,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,tierOf} from '../core/config.js';
 import {TS} from './sprites.js';
+import {sideTile} from '../core/roomgen.js';
+
+/* Farben der Raum-Ereignisse, gleich wie in ui/hud.js */
+const EVCOL={dark:'#b779e8',coolant:'#5fd3e6',cache:'#8bdc5f',alarm:'#ff4d3d'};
 
 /* Bodenfarben je Deck: Grundton, Fuge, Kante, Niete */
 const FLOORS=[
@@ -95,11 +99,18 @@ export function drawTile(ctx,G,t,i,x,y,now){
     return;
   }
   if(t===EXIT){ // offen
+    const ex=G.exits.find(e=>{const s=sideTile(e.side,e.pos);return s.x===(i%RW)&&s.y===((i/RW)|0)}),hint=ex&&ex.hint;
     const pulse=.5+.5*Math.sin(now/260);
     r('#3e4a58',0,0,16,16);r('#05070a',2,2,12,12);
     ctx.fillStyle=`rgba(255,176,0,${.45+.55*pulse})`;
     ctx.fillRect(x+1,y+1,14,1);ctx.fillRect(x+1,y+14,14,1);ctx.fillRect(x+1,y+1,1,14);ctx.fillRect(x+14,y+1,1,14);
     ctx.fillStyle=`rgba(255,176,0,${.3+.7*pulse})`;for(let k=0;k<3;k++){ctx.fillRect(x+6+k,y+5+k,1,1);ctx.fillRect(x+6+k,y+10-k,1,1)}
+    // Anzeige: oben das Raum-Ereignis (Farbe wie in der Statuskonsole), unten ein Strich je Gegner (rot = Elite dabei)
+    if(hint){
+      r('#05070a',2,2,12,3);r('#05070a',2,11,12,3);
+      if(hint.event)r(EVCOL[hint.event],5,2,6,2);
+      const n=hint.boss?6:Math.min(6,hint.n);for(let k=0;k<n;k++)r(hint.boss?'#b779e8':hint.elite?'#ff4d3d':'#eef3f6',3+k*2,12,1,2);
+    }
     return;
   }
   if(t===POD){

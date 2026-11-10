@@ -22,7 +22,7 @@ function walkDist(map, from) {
 
 // human: wie ein Mensch das automatische Zugende abwarten, statt selbst „Zug beenden“ zu drücken
 export async function runBot(api, wait, maxSteps = 4000, human = false) {
-  let steps = 0, maxRoom = 1;
+  let steps = 0, maxRoom = 1, tried = '';
   while (steps++ < maxSteps) {
     await wait();
     const G = api.G();
@@ -36,6 +36,14 @@ export async function runBot(api, wait, maxSteps = 4000, human = false) {
       const mi = p.inv.indexOf('med');
       // Medi zweimal wählen, weil er bei kleiner Heilung nachfragt
       if (p.act > 0 && mi >= 0 && p.hp < p.max * .35) { api.useItem(mi); if (G.p.act > 0) api.useItem(mi); continue; }
+      // Neue Mittel ausprobieren (höchstens ein Versuch je Runde, falls das Spiel ablehnt): Geschütz/EMP, Mine, Blendgranate, Notschild
+      const seenNow = alive.some(m => V[m.x + m.y * RW]), stamp = G.room + ':' + G.round;
+      if (p.act > 0 && seenNow && tried !== stamp) {
+        tried = stamp;
+        if (api.ability && p.cd === 0 && (G.cls === 'eng' || G.cls === 'tech')) { api.ability(); continue; }
+        const ex = p.inv.findIndex(k => k === 'mine' || k === 'flash' || k === 'barrier');
+        if (ex >= 0) { api.useItem(ex); continue; }
+      }
       const adj = alive.find(m => V[m.x + m.y * RW] && cheb(m, p) === 1);
       if (p.act > 0 && adj) { const before = p.act; api.stepPlayer(Math.sign(adj.x - p.x), Math.sign(adj.y - p.y)); if (p.act === before) api.endTurn(); continue; }
       if (p.act > 0 && api.shootTargets().length && (p.ammo > 0 || G.cls === 'scout')) { const before = p.act; api.fireButton(true); if (p.act === before) api.endTurn(); continue; }

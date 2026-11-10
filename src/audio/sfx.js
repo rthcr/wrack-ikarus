@@ -18,7 +18,7 @@ const vol=loadVolumes();   // 0..100
 const VOL={shoot:.5,hit:.8,miss:.45,hurt:.85,zap:.45,spit:.65,pick:.5,kill:.7,drop:.45,lvl:.55,lift:.55,die:.9,emp:.65,boom:.9,win:.8,
   step:.32,step2:.32,shuffle:.35,servo:.3,stomp:.55,skitter:.35};
 /* Bewegungsgeräusch je Gegner */
-const MOVE={drone:'servo',walker:'stomp',queen:'stomp',larva:'skitter',hunter:'skitter',mutant:'shuffle'};
+const MOVE={drone:'servo',walker:'stomp',queen:'stomp',larva:'skitter',hunter:'skitter',mutant:'shuffle',breaker:'stomp',spitter:'skitter'};
 
 /* ---------- Ersatztöne (die Klänge der klassischen Fassung) ---------- */
 function beep(f,dur,type,v,slide){const AC=E.context();if(!AC)return;try{const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+dur);g.gain.setValueAtTime(v||.05,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g).connect(E.sfxOut());o.start(t);o.stop(t+dur+.02)}catch(e){}}

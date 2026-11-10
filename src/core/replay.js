@@ -10,7 +10,7 @@
 import * as game from './game.js';
 import {CLS} from './config.js';
 
-const RUNKEY='wrack-ikarus-run-v3',LPKEY='wrack-ikarus-lp';
+const RUNKEY='wrack-ikarus-run-v4',LPKEY='wrack-ikarus-lp';
 const CODES='scfabudgpex';
 const MAX_EVENTS=30000;
 

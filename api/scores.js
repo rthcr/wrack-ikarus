@@ -20,7 +20,7 @@ const ROOMS = 9;
 const DAY_TTL = 8 * 24 * 3600; // Tageslisten werden nach 8 Tagen gelöscht
 const dayBoard = (d) => 'wi:day:' + d;          // Sorted Set je Tag
 const dayEntries = (d) => 'wi:day:' + d + ':e'; // Hash je Tag (eigene Kopie, unabhängig vom Kürzen der Gesamtliste)
-const CLASSES = ['marine', 'tech', 'scout'];
+const CLASSES = ['marine', 'tech', 'scout', 'eng'];
 
 async function redis(commands) {
   const res = await fetch(`${REDIS_URL}/pipeline`, {

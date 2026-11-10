@@ -62,7 +62,7 @@ p{margin:0}
 @media (max-width:820px){.setup{grid-template-columns:minmax(0,1fr)}}
 .block{background:var(--panel);border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .lbl{font-family:var(--f-display);font-size:12px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.classes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.classes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 @media (max-width:620px){.classes{grid-template-columns:minmax(0,1fr)}}
 .cls{background:var(--panel2);border:1px solid var(--line);text-align:left;padding:12px;display:grid;grid-template-columns:48px minmax(0,1fr);gap:4px 12px;align-content:start;border-radius:2px}
 @media (min-width:621px){.cls{grid-template-columns:minmax(0,1fr)}}
@@ -240,6 +240,12 @@ p{margin:0}
 .tutbtn.hot{border-color:var(--green);color:var(--green)}
 .tutmsg{border:1px solid var(--green);color:var(--green);padding:8px 10px;font-size:13px}
 @media (prefers-reduced-motion:reduce){.tut.pop{animation:none}}
+/* Türen nach dem Kampf und Raum-Ereignis */
+.seen .door{display:grid;gap:2px;padding:6px 0;border-top:1px solid var(--line)}
+.seen .door b{color:var(--amber);font-weight:500}
+.seen .door .ev{color:var(--dim)}
+.seen .door .ev i{display:inline-block;width:8px;height:8px;margin-right:6px}
+.event{line-height:1.4}
 /* Gegner-Infos: Zeile anklicken klappt die Werte auf */
 .seen .row{background:none;border:0;padding:0;color:inherit;font:inherit;text-align:left;width:100%;cursor:pointer}
 .seen .row:hover span:first-of-type,.seen .row[aria-expanded=true] span:first-of-type{color:var(--amber)}

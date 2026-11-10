@@ -10,7 +10,7 @@ function addLP(cls,x){const a=loadLP();a[cls]=(a[cls]||0)+x;memLP=a;try{localSto
 const lp=cls=>loadLP()[cls]||0;
 
 /* Laufender Run. Eigener Schlüssel, damit sich klassische und neue Version nicht gegenseitig Runs laden. */
-const RKEY='wrack-ikarus-run-v3';
+const RKEY='wrack-ikarus-run-v4';
 function loadRun(){try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null}}
 function storeRun(data){try{if(data)localStorage.setItem(RKEY,JSON.stringify(data));else localStorage.removeItem(RKEY)}catch(e){}}
 const NKEY='wrack-ikarus-name';

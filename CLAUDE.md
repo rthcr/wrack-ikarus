@@ -81,6 +81,15 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Tutorial:** `startTutorial()` in game.js baut einen festen Übungsraum (`G.tut`): keine Aufzeichnung, keine LP, kein Eintrag,
   kein gespeicherter Stand; durch die Tür oder Abbruch geht es zurück zum Start (Ereignis `tutorial`). Schritte in `ui/tutorial.js`
   beobachten nur den Zustand. Ändert sich der Raum (`TUT` in game.js), die Schritt-Texte dort prüfen.
+- **Klassen:** vier (`marine`, `tech`, `scout`, `eng`) in `CLS` (config.js). Eine neue Klasse braucht außerdem: `UNLD`, `CLASS_PATCH` (art.js),
+  Zweig in `ability()` und `startPerk` (game.js), `CLASSES` in `api/scores.js`, die Klassenlisten in `scripts/parity-check.mjs` und `replay-check.mjs`.
+- **Geschütz und Minen:** `G.sentry` (`{x,y,ttl}`, blockiert sein Feld, schießt in `sentryTurn()` am Anfang des Gegnerzugs) und `G.mines`
+  (lösen in `monTurn` nach einem Schritt aus). Beides verschwindet, wenn der Raum gesichert ist. In `enemyPhase` nach jedem `await`
+  `if(G!==run)return` prüfen, sonst schießt nach einem Neuladen der alte Ablauf noch einmal (Nachspielen weicht dann ab).
+- **Raum-Ereignisse:** `EVENTS` in config.js (`dark`, `coolant`, `cache`, `alarm`), gezogen in `roomgen.js` (ab Raum 2, nie im Bossraum,
+  `EVENT_CHANCE`), Wirkung in game.js (`sight()`, `slow()`, `enterRoom`). Farben je Ereignis in `EVCOL` (hud.js und tiles.js gleich halten).
+- **Tür-Anzeigen:** `checkClear()` erzeugt für jede Tür den nächsten Raum vorab (`genRoom` mit demselben Pfad wie beim Betreten) und legt
+  `e.hint={n,elite,event,boss}` ab; tiles.js malt die Anzeige auf die Tür, hud.js listet sie unter „Gegner in Sicht“.
 - **Gegner-Infos:** `monInfo()` in hud.js rechnet Schaden und Trefferchance wie `monAttack`, `melee`, `shootAt` in game.js.
   Ändern sich dort die Formeln oder kommt ein Gegner dazu, `monInfo`/`MONINFO` mitändern.
 - **Seed des Tages:** für alle gleich, wechselt um Mitternacht UTC. `dailySeed()` in `src/core/rng.js` und in `api/scores.js`
@@ -89,7 +98,7 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Gespeicherter Run:** `validRun()` in game.js prüft ihn vor dem Laden vollständig; ein ungültiger wird verworfen.
   Neue Felder in `G` dort mit aufnehmen. Text aus Browserspeicher oder Server nur über `esc()` (ui/esc.js) in HTML einsetzen.
 - **Speicherschlüssel:** Bestenliste und LP teilen sich die Schlüssel mit der klassischen Fassung (Fortschritt gilt in beiden).
-  Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v3`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
+  Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v4`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
 - Nach Logikänderungen `npm run check` laufen lassen.
 - Grafik: Kacheln sind 16×16 (`TS`), die Welt 272×208 Pixel, Phaser skaliert mit `pixelArt: true`.
   Neue Figuren in `art.js`: genau 16 Zeilen à 16 Zeichen, nur Farbzeichen aus `PAL` (plus h/H bzw. x/X zum Umfärben).
