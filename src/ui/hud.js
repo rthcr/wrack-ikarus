@@ -2,7 +2,7 @@
 import {RW,ROOMS,INV,TIERNAME,CLS,AB2,MON,IT,tierOf,roomTitle} from '../core/config.js';
 import {L,nf} from '../core/i18n.js';
 import {cheb} from '../core/geometry.js';
-import {S,PERKS,atk,def,need,score,canInput,canSee,itemAt,unl,useItem,dropItem,takePerk} from '../core/game.js';
+import {S,PERKS,atk,def,need,score,dodge,canInput,canSee,itemAt,unl,useItem,dropItem,takePerk} from '../core/game.js';
 import {on} from '../core/bus.js';
 import {esc} from './esc.js';
 import {iconURL,itemSpr,monSpr} from '../render/sprites.js';
@@ -30,7 +30,7 @@ function renderHud(){
   }
   const pct=Math.max(0,p.hp/p.max);const bar=$('hpBar');bar.querySelector('i').style.width=(pct*100)+'%';bar.className='bar '+(pct>.6?'ok':pct>.3?'mid':'');
   $('hpTxt').textContent=`${p.hp}/${p.max}`;$('ammoTxt').textContent=p.ammo;$('roomTxt').textContent=`${G.room}/${ROOMS}`;
-  $('topInfo').textContent=`Seed ${G.seed} · ${c.n}`;
+  $('topInfo').textContent=G.tut?L('Tutorial · Übungsraum','Tutorial · training room'):`Seed ${G.seed} · ${c.n}`;
   $('deckLbl').textContent=TIERNAME[tierOf(G.room)-1];
   $('roomName').textContent=`${L('Raum','Room')} ${G.room} · ${roomTitle(G.name)}`;
   $('roomPips').innerHTML=Array.from({length:ROOMS},(_,i)=>{const n=i+1;let k=n<G.room||(n===G.room&&G.phase==='explore')?'on':n===G.room?'now':'';if(n===ROOMS)k='boss'+(n===G.room?' now':'');return`<span class="${k}"></span>`}).join('');
@@ -53,7 +53,8 @@ function renderHud(){
   const seenM=G.mons.filter(m=>m.hp>0&&VIS[m.x+m.y*RW]).sort((a,b)=>cheb(a,p)-cheb(b,p));
   $('seenList').innerHTML=seenM.length?seenM.slice(0,6).map(m=>{const d=MON[m.t];
     let s,cl='';if(m.stun>0){s=L(`gelähmt (${m.stun})`,`stunned (${m.stun})`);cl='stun'}else if(!m.aware){s=L('hat dich noch nicht bemerkt','hasn’t noticed you yet')}else if(canSee(m)){s=L('sieht dich','sees you');cl='see'}else{s=L('sucht dich','searching for you')}
-    return`<div class="row"><img alt="" src="${iconURL(monSpr(m.t),'m_'+m.t,32)}"><span>${d.n}${m.elite?' (Elite)':''}</span><span class="mbar"><i style="width:${Math.max(0,m.hp/m.max*100)}%"></i></span><span class="st ${cl}">${s} · ${cheb(m,p)} ${cheb(m,p)===1?L('Feld','tile'):L('Felder','tiles')}</span></div>`}).join('')
+    const open=openMon===m.id;
+    return`<button class="row" data-mid="${m.id}" aria-expanded="${open}"><img alt="" src="${iconURL(monSpr(m.t),'m_'+m.t,32)}"><span>${d.n}${m.elite?' (Elite)':''}</span><span class="mbar"><i style="width:${Math.max(0,m.hp/m.max*100)}%"></i></span><span class="st ${cl}">${s} · ${cheb(m,p)} ${cheb(m,p)===1?L('Feld','tile'):L('Felder','tiles')}</span></button>${open?monInfo(m):''}`}).join('')
     :`<p class="muted">${G.phase==='explore'?L('Raum gesichert.','Room secured.'):L('Niemand in Sichtlinie. Hinter der Deckung kann trotzdem etwas lauern.','Nobody in line of sight. Something may still lurk behind the cover.')}</p>`;
   const ab=$('abBtn');$('abName').textContent=c.ab;
   $('abSub').textContent=G.phase!=='player'?L('nur im Kampf','combat only'):p.cd>0?L(`lädt ${p.cd} Rd. · R`,`charging ${p.cd} rd. · R`):p.act>0?L('bereit · R','ready · R'):L('Aktion verbraucht','action used');
@@ -72,6 +73,37 @@ function renderHud(){
   $('log').innerHTML=G.log.slice(0,9).map(l=>`<p class="${LOGK.includes(l.k)?l.k:'info'}">${esc(l.t)}</p>`).join('');
 }
 const LOGK=['info','warn','good','hurt','dim','sep'];
+/* ---------- Gegner-Infos ----------
+   Klick auf einen Gegner in der Liste klappt seine Werte auf. Die Zahlen folgen den Regeln in core/game.js
+   (monAttack, melee, shootAt): Dort ändern heißt hier mitändern. */
+let openMon=null;
+const MONINFO={
+  larva:()=>L('Schwach, aber flink. Die Brutmutter stößt immer neue aus.','Weak but quick. The Brood Mother keeps expelling new ones.'),
+  drone:()=>L('Maschine: Der EMP-Impuls richtet 6 Schaden an. Lässt oft eine Energiezelle fallen.','Machine: the EMP pulse deals 6 damage. Often drops an energy cell.'),
+  mutant:()=>L('Langsam, hält aber einiges aus.','Slow, but takes a beating.'),
+  turret:()=>L('Steht fest und schießt bis zu 6 Felder weit, sobald es dich sieht. Kein Nahkampf. Maschine. Deckung hilft.','Fixed in place and shoots up to 6 tiles as soon as it sees you. No melee. Machine. Cover helps.'),
+  hunter:()=>L('Sehr schnell: Er holt dich fast immer ein. Schwäch ihn, bevor er bei dir ist.','Very fast: it almost always catches you. Weaken it before it reaches you.'),
+  walker:()=>L('Schwer gepanzert, Schüsse und Schläge verlieren viel Wirkung. Langsam. Maschine.','Heavily armored, shots and blows lose much of their effect. Slow. Machine.'),
+  queen:()=>L('Boss. Spuckt bis zu 5 Felder weit (6 Schaden, jede zweite Runde) und stößt alle 3 Runden eine Larve aus. Der EMP-Impuls lähmt sie nur 1 Runde.','Boss. Spits up to 5 tiles (6 damage, every other round) and expels a larva every 3 rounds. The EMP pulse stuns her for only 1 round.'),
+};
+const range=(a,b)=>a===b?`${a}`:`${a}–${b}`;
+function monInfo(m){
+  const G=S.G,p=G.p,d=MON[m.t],c=CLS[G.cls];
+  const ma=d.atk+(m.elite?1:0),hit=Math.round((.8-dodge())*100);
+  const dmgIn=range(Math.max(1,ma-1-def()),Math.max(1,ma+1-def()));
+  const mel=range(Math.max(1,atk()-1-d.def),Math.max(1,atk()+1-d.def));
+  const weak=p.ammo<=0&&!!c.side&&!unl(0),base=weak?2:4+Math.floor(p.lvl/2),hd=Math.floor(d.def/2);
+  const shot=p.ammo>0||c.side?range(Math.max(1,base-hd),Math.max(1,base+(weak?1:2)-hd)):null;
+  const rows=[[L('Lebenspunkte','Hit points'),`${Math.max(0,m.hp)} / ${m.max}`],[L('Angriff','Attack'),ma],[L('Panzerung','Armor'),d.def],
+    [L('Bewegung','Move'),d.mp?L(`${d.mp} Felder`,`${d.mp} tiles`):L('keine','none')]];
+  if(d.range)rows.push([L('Reichweite','Range'),L(`${d.range} Felder`,`${d.range} tiles`)]);
+  return`<div class="info"><dl>${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
+<p class="you">${L(`Trifft dich zu ${hit} % für ${dmgIn} Schaden.`,`Hits you ${hit} % of the time for ${dmgIn} damage.`)}<br>${L(`Dein Nahkampf: ${mel} Schaden`,`Your melee: ${mel} damage`)}${shot?L(` · dein Schuss: ${shot}`,` · your shot: ${shot}`):''}</p>
+<p>${MONINFO[m.t]()}${m.elite?' '+L('Elite: mehr Lebenspunkte, +1 Angriff, doppelte Erfahrung, lässt immer Beute fallen.','Elite: more hit points, +1 attack, double experience, always drops loot.'):''}</p></div>`;
+}
+$('seenList').addEventListener('click',e=>{const b=e.target.closest('.row');if(!b)return;const id=+b.dataset.mid;openMon=openMon===id?null:id;renderHud()});
+on('reset',()=>{openMon=null});
+
 function flashStage(){const s=$('stage');s.classList.add('hurt');setTimeout(()=>s.classList.remove('hurt'),220)}
 
 on('change',renderHud);

@@ -1,11 +1,11 @@
 // Spiellogik von Wrack Ikarus: Regeln, Runden, Kampf, Items, Gegner-KI.
 // Kein DOM, keine Grafik: Alles, was sichtbar oder hörbar wird, geht als Ereignis über den Bus.
 // Der Regelcode ist aus der klassischen Version übernommen und dort Zeile für Zeile gleich.
-import {RW,RH,ROOMS,INV,FLOOR,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,MON,IT,ITABLE,tierOf} from './config.js';
+import {RW,RH,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,MON,IT,ITABLE,tierOf} from './config.js';
 import {h32,wpick,dailyDay} from './rng.js';
 import {solidT,cheb,losMap,canStep} from './geometry.js';
 import {sideTile,genRoom} from './roomgen.js';
-import {saveScore,addLP,lp,storeRun} from './storage.js';
+import {saveScore,addLP,lp,storeRun,storeTutorialDone} from './storage.js';
 import {emit} from './bus.js';
 import {L,localize} from './i18n.js';
 
@@ -74,6 +74,30 @@ function startRun(seed,cls,opts){
   log(L('Andockschleuse offen. Die Luft riecht nach Ozon und etwas Süßlichem.','Docking airlock open. The air smells of ozone and something sweet.'),'warn');
   showScreen('game');
   enterRoom(1,'L');
+}
+
+/* ---------- Tutorial ----------
+   Ein fester Übungsraum mit einer Wartungsdrohne hinter Deckung. Zählt nicht: keine Aufzeichnung, keine LP,
+   kein Eintrag, kein gespeicherter Spielstand. Die Schritte und Texte dazu stehen in ui/tutorial.js. */
+const TUT={start:{x:2,y:6},cell:{x:4,y:8},crates:[[7,3],[7,4],[7,5],[7,6],[7,7],[7,8],[7,9],[8,3],[8,9]],drone:{x:11,y:6},exit:{side:'R',pos:6}};
+function startTutorial(){
+  const cls='marine',c=CLS[cls];
+  G={seed:'TUTORIAL',cls,tut:true,day:null,lp0:0,rec:null,medArm:null,room:1,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32('TUTORIAL!kampf'),nid:1,cause:'',
+     map:[],deco:[],mons:[],items:[],exits:[TUT.exit],entry:'L',name:L('Übungsraum','Training room'),elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,
+     p:{x:TUT.start.x,y:TUT.start.y,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
+  for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){G.map.push(x===0||y===0||x===RW-1||y===RH-1?WALL:FLOOR);G.deco.push(((x*7+y*13)%10)/10)}
+  TUT.crates.forEach(([x,y])=>{G.map[x+y*RW]=BLOCK});
+  const ent=sideTile('L',TUT.start.y),ex=sideTile(TUT.exit.side,TUT.exit.pos);G.map[ent.x+ent.y*RW]=DOOR;G.map[ex.x+ex.y*RW]=DOOR;
+  G.mons=[newMon('drone',TUT.drone.x,TUT.drone.y)];G.items=[{k:'cell',x:TUT.cell.x,y:TUT.cell.y}];
+  finishing=false;busy=false;pendingEnd=false;hover=null;emit('reset');
+  log(L('Übungsraum. Hier zählt nichts, probier alles aus.','Training room. Nothing counts here, try everything.'),'info');
+  showScreen('game');
+  startRound();
+}
+/* Tutorial beenden und zurück zum Start; done: durch die Tür gegangen (geschafft) */
+function endTutorial(done){
+  G.over=true;busy=false;if(done)storeTutorialDone();
+  updateUI();emit('tutorial',done?'done':'left');showScreen('title');
 }
 
 function enterRoom(idx,entry){
@@ -163,7 +187,7 @@ function dropLoot(m,d){
 }
 function gainXp(x){
   G.xpTotal+=x;const p=G.p;p.xp+=x;
-  const was=lp(G.cls),now=addLP(G.cls,x);
+  const was=lp(G.cls),now=G.tut?was:addLP(G.cls,x);   // im Tutorial gibt es keine LP
   UNL.forEach((t,i)=>{if(was<t&&now>=t){log(L(`Freigeschaltet: ${UNLD[G.cls][i]}.`,`Unlocked: ${UNLD[G.cls][i]}.`),'good');banner(L('Neue Fähigkeit','New ability'),'good');if(i===0)startPerk()}});
   while(p.xp>=need(p.lvl)){p.xp-=need(p.lvl);p.lvl++;p.max+=2;p.hp=Math.min(p.max,p.hp+2);G.picks=(G.picks||0)+1;
     log(L(`Stufe ${p.lvl}! Max. TP +2. Wähle ein Upgrade.`,`Level ${p.lvl}! Max HP +2. Choose an upgrade.`),'good');SFX.lvl()}
@@ -410,6 +434,7 @@ function goThrough(x,y){
   const t=G.map[x+y*RW];
   if(t===POD){G.p.x=x;G.p.y=y;G.win=true;log(L('Kapsel abgekoppelt. Die IKARUS-7 schrumpft hinter dir zu einem Punkt.','Pod undocked. The IKARUS-7 shrinks to a dot behind you.'),'good');SFX.win();finish();return}
   const e=G.exits.find(e=>{const s=sideTile(e.side,e.pos);return s.x===x&&s.y===y});if(!e)return;
+  if(G.tut){SFX.lift();endTutorial(true);return}
   G.path+=e.side+e.pos+'.';SFX.lift();
   enterRoom(G.room+1,OPP[e.side]);
 }
@@ -469,11 +494,12 @@ async function monTurn(m){
   if(!sees&&m.known&&cheb(m,m.known)<=1){m.known=null;if(shown())log(L(`${d.nom} hat deine Spur verloren.`,`${d.nom} has lost your trail.`),'dim')}
 }
 
-const unl=i=>lp(G.cls)>=UNL[i];
+const unl=i=>!G.tut&&lp(G.cls)>=UNL[i];   // im Tutorial ohne Freischaltungen
 let lastEntry=null;
-function saveRun(){if(timing.save)storeRun(G&&screen==='game'&&!G.over?{G,screen,sel}:null)}
+function saveRun(){if(G&&G.tut)return;if(timing.save)storeRun(G&&screen==='game'&&!G.over?{G,screen,sel}:null)}
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
+  if(G.tut){updateUI();later(()=>{if(G&&G.over)endTutorial(false)},G.quit?0:1200);return}   // Tutorial: kein Eintrag, zurück zum Start
   const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,day:G.day||null,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
   // Abgebrochene Runs zählen nicht für die Bestenliste. Aufzeichnung (rec, lp0) nur für das Eintragen, nicht im Browser speichern.
   lastEntry={...entry,rec:G.rec||null,lp0:G.lp0};if(!entry.quit)saveScore(entry);updateUI();
@@ -564,7 +590,7 @@ const S={
 /* Nach außen nur die aufgezeichneten Fassungen der Eingaben */
 const {s:stepPlayer_,c:tileClick_,f:fireButton_,a:ability_,b:ability2_,u:useItem_,d:dropItem_,g:pickupHere_,p:takePerk_,e:endTurn_,x:cancelTarget_}=ACTIONS;
 export {S,timing,PERKS,ACTIONS,runHash,
-  startRun,enterRoom,startRound,
+  startRun,startTutorial,enterRoom,startRound,
   endTurn_ as endTurn,stepPlayer_ as stepPlayer,tileClick_ as tileClick,fireButton_ as fireButton,ability_ as ability,ability2_ as ability2,
   useItem_ as useItem,dropItem_ as dropItem,pickupHere_ as pickupHere,takePerk_ as takePerk,cancelTarget_ as cancelTarget,
   quitRun,restore,validRun,setScreen,setSel,setHover,computeVis,updateUI,

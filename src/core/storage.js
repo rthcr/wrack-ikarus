@@ -36,4 +36,8 @@ const VKEY='wrack-ikarus-lautstaerke';
 function loadVolumes(){try{const v=JSON.parse(localStorage.getItem(VKEY)||'null');if(v&&typeof v==='object')return{sfx:+v.sfx||0,music:+v.music||0}}catch(e){}return{sfx:80,music:70}}
 function storeVolumes(v){try{localStorage.setItem(VKEY,JSON.stringify(v))}catch(e){}}
 
-export {loadVolumes,storeVolumes,loadMusic,storeMusic,loadFilter,storeFilter,loadLang,storeLang,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};
+/* Tutorial einmal geschafft? (Der Startbildschirm weist neue Spieler sonst darauf hin) */
+const TUTKEY='wrack-ikarus-tutorial';
+function loadTutorialDone(){try{return localStorage.getItem(TUTKEY)==='1'}catch(e){return false}}
+function storeTutorialDone(){try{localStorage.setItem(TUTKEY,'1')}catch(e){}}
+export {loadTutorialDone,storeTutorialDone,loadVolumes,storeVolumes,loadMusic,storeMusic,loadFilter,storeFilter,loadLang,storeLang,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};

@@ -105,7 +105,10 @@
       </div>
       <div class="block go">
         <h2 class="lbl" data-t="dock">3 · Andocken</h2>
+        <p class="tutmsg" id="tutMsg" hidden></p>
         <button id="startBtn" class="primary" data-t="start">Mission starten</button>
+        <p class="hint" id="tutHint" hidden></p>
+        <button id="tutBtn" class="btn tutbtn"></button>
         <p class="classic" data-t="classic">Lieber die erste Fassung? <a href="/classic/">Klassische Version spielen</a></p>
         <div class="ctrl-wrap" data-controls></div>
       </div>
@@ -115,6 +118,11 @@
   <section id="scrGame" hidden>
     <div class="game">
       <div class="left">
+        <div class="tut" id="tutBox" hidden aria-live="polite">
+          <span class="tut-step" id="tutStep"></span>
+          <b class="tut-title" id="tutTitle"></b>
+          <p id="tutText"></p>
+        </div>
         <div class="stage" id="stage">
                     <div class="banner" id="banner" aria-live="polite"></div>
           <div class="lvlup" id="lvlUp" hidden></div>

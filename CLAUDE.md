@@ -47,7 +47,8 @@ src/ui/               DOM-Oberfläche: lang.js (Sprachwahl, englische Texte für
                       settings.js (Menü Einstellungen: Lautstärke/Stumm Musik und Effekte, Bildfilter; Knopf „Ton einschalten“),
                       titleArt.js (animiert das Titelbild, nur solange der Startbildschirm sichtbar ist),
                       controls.js (Steuerungstabelle, füllt alle [data-controls]: Startbildschirm und aufklappbar im Spiel),
-                      fullscreen.js (Knopf „Vollbild“; nur sichtbar, wenn der Browser es kann – iPhone nicht)
+                      fullscreen.js (Knopf „Vollbild“; nur sichtbar, wenn der Browser es kann – iPhone nicht),
+                      tutorial.js (Schritte und Texte des Tutorials, Knopf und Hinweis auf dem Startbildschirm)
 src/audio/engine.js   Web-Audio: Dateien laden, Effekte abspielen, Musikspuren überblenden (nahtlose Loops)
 src/audio/sfx.js      Ton im Spiel: Effekte zu Ereignissen, Musik ab Startbildschirm je Deck + Kampfspur, Lautstärken
 public/assets/audio/  erzeugte MP3s und manifest.json (nicht von Hand bearbeiten, sondern neu erzeugen)
@@ -74,6 +75,11 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
     (Texte ja, Entscheidungen nein). Verzögerungen nur über `sleep`/`later` in game.js.
   - Neuladen wird als Ereignis `R` mit Prüfwert (`runHash`, ohne Log und Raumnamen) aufgezeichnet.
   - Die klassische Fassung zeichnet nicht auf; ihre Einträge lehnt der Server ab.
+- **Tutorial:** `startTutorial()` in game.js baut einen festen Übungsraum (`G.tut`): keine Aufzeichnung, keine LP, kein Eintrag,
+  kein gespeicherter Stand; durch die Tür oder Abbruch geht es zurück zum Start (Ereignis `tutorial`). Schritte in `ui/tutorial.js`
+  beobachten nur den Zustand. Ändert sich der Raum (`TUT` in game.js), die Schritt-Texte dort prüfen.
+- **Gegner-Infos:** `monInfo()` in hud.js rechnet Schaden und Trefferchance wie `monAttack`, `melee`, `shootAt` in game.js.
+  Ändern sich dort die Formeln oder kommt ein Gegner dazu, `monInfo`/`MONINFO` mitändern.
 - **Seed des Tages:** für alle gleich, wechselt um Mitternacht UTC. `dailySeed()` in `src/core/rng.js` und in `api/scores.js`
   müssen gleich rechnen. Ein Run mit dem heutigen Tages-Seed bekommt `G.day`; der Server trägt ihn zusätzlich in
   `wi:day:<Datum>` ein (heute oder gestern, läuft nach 8 Tagen ab). `GET /api/scores?day=JJJJ-MM-TT` liefert die Tagesliste.
