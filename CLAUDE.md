@@ -61,6 +61,9 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 
 ## Regeln für Änderungen
 
+- **Veröffentlichen:** Jede fertige, getestete Änderung committen und nach `main` pushen; Vercel stellt `main` automatisch live.
+  Nicht lokal oder auf einem Nebenzweig liegen lassen (Wunsch von Martin, gilt auch für alle künftigen Änderungen).
+
 - **Logik und Darstellung getrennt halten.** `src/core/` greift nie auf `document`, `window` oder Phaser zu.
   Was sichtbar oder hörbar werden soll, meldet die Logik über `emit()` aus `bus.js`:
   `change` (Oberfläche neu zeichnen), `fx` (Effekt), `sfx` (Ton), `banner`, `hurt`, `screen`, `reset`.
