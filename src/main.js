@@ -38,8 +38,28 @@ const game=new Phaser.Game({
   audio:{noAudio:true},          // Ton kommt vorerst aus audio/sfx.js
   scale:{mode:Phaser.Scale.NONE,zoom:2},
   scene:[GameScene],
-  callbacks:{postBoot:g=>{g.canvas.id='cv';g.canvas.setAttribute('aria-label',L('Spielfeld','Game board'));fit(true)}},
+  callbacks:{postBoot:g=>{watchContext(g.canvas);g.canvas.id='cv';g.canvas.setAttribute('aria-label',L('Spielfeld','Game board'));fit(true)}},
 });
+
+/* Grafik-Absturz abfangen: Verliert der Browser den WebGL-Kontext (Grafiktreiber, Energiesparen, zu viele Tabs),
+   bleibt das Spielfeld sonst weiß mit einem traurigen Gesicht. Kommt der Kontext nicht von selbst zurück,
+   lädt die Seite einmal neu (der laufende Run ist gespeichert); passiert es gleich wieder, erscheint ein Hinweis. */
+function watchContext(cv){
+  let timer=null;
+  cv.addEventListener('webglcontextlost',()=>{
+    clearTimeout(timer);
+    timer=setTimeout(()=>{
+      let last=0;try{last=+sessionStorage.getItem('wrack-gl-reload')||0}catch(e){}
+      if(Date.now()-last>60000){try{sessionStorage.setItem('wrack-gl-reload',String(Date.now()))}catch(e){}location.reload();return}
+      const st=$('stage');if(st.querySelector('.glmsg'))return;
+      const box=document.createElement('div');box.className='glmsg';
+      const t=document.createElement('p');t.textContent=L('Der Browser hat die Grafik des Spielfelds abgeschaltet. Dein Run ist gespeichert.','The browser has shut down the graphics of the game board. Your run is saved.');
+      const b=document.createElement('button');b.className='btn';b.textContent=L('Seite neu laden','Reload page');b.onclick=()=>location.reload();
+      box.append(t,b);st.append(box);
+    },1500);
+  });
+  cv.addEventListener('webglcontextrestored',()=>{clearTimeout(timer);const m=$('stage').querySelector('.glmsg');if(m)m.remove()});
+}
 
 /* Sichthöhe ohne die beim Scrollen ein- und ausfahrenden Browserleisten (iPad, iPhone):
    100svh bleibt gleich, innerHeight nicht. Ältere Browser ohne svh liefern 0, dann gilt innerHeight. */

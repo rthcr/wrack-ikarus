@@ -228,6 +228,7 @@ p{margin:0}
 .slot .nm{font-size:13px}
 .slot .ds{font-size:11px;color:var(--dim);grid-column:3}
 .slot .empty{color:var(--dim);font-size:12px;grid-column:2/-1}
+.glmsg{position:absolute;inset:0;z-index:3;background:#05070b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center}
 /* Tutorial */
 .tut{background:#14180f;border:1px solid var(--green);border-left:4px solid var(--green);padding:10px 12px;display:grid;gap:2px}
 .tut.pop{animation:tutpop .5s ease-out}
