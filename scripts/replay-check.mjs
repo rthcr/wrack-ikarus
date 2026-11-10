@@ -7,11 +7,11 @@ import { runBot } from './bot.mjs';
 const mem = new Map();
 // Neuladen auch mitten im Ablauf (Laufweg, Gegnerzug): nach einem Speichern im nächsten Mikroschritt
 let midReload = null;
-const browserStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => { mem.set(k, String(v)); if (k === 'wrack-ikarus-run-v4' && midReload) midReload(); }, removeItem: k => mem.delete(k) };
+const browserStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => { mem.set(k, String(v)); if (k === 'wrack-ikarus-run-v5' && midReload) midReload(); }, removeItem: k => mem.delete(k) };
 globalThis.localStorage = browserStorage;
 const game = await import('../src/core/game.js');
 const { replayRun } = await import('../src/core/replay.js');
-const RUNKEY = 'wrack-ikarus-run-v4';
+const RUNKEY = 'wrack-ikarus-run-v5';
 const classes = ['marine', 'tech', 'scout', 'eng'];
 const runs = Number(process.argv[2] || 30);
 const human = process.argv.includes('--human');   // Zugende abwarten wie ein Mensch

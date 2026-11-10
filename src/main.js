@@ -15,6 +15,7 @@ import {GameScene} from './render/GameScene.js';
 import './audio/sfx.js';
 import './ui/hud.js';
 import './ui/tutorial.js';
+import './ui/watch.js';
 import {showScreen,renderClasses} from './ui/screens.js';
 import './ui/input.js';
 import './ui/settings.js';
@@ -82,7 +83,7 @@ function fit(force){
 }
 on('screen',s=>{if(s==='game')requestAnimationFrame(()=>fit(true))});
 // Neuer Run: Seed in die Adresszeile, damit man den Link teilen kann
-on('reset',()=>{if(S.G.tut)return;try{history.replaceState(null,'','#seed-'+S.G.seed)}catch(e){}});
+on('reset',()=>{if(S.G.tut||S.watch)return;try{history.replaceState(null,'','#seed-'+S.G.seed)}catch(e){}});
 window.addEventListener('resize',()=>{if(S.screen==='game')fit()});
 // Vollbild an/aus: Platz neu verteilen
 for(const ev of ['fullscreenchange','webkitfullscreenchange'])document.addEventListener(ev,()=>{if(S.screen==='game')requestAnimationFrame(()=>fit(true))});

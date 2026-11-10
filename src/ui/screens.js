@@ -1,9 +1,10 @@
 // Titel- und Endbildschirm: Klassenwahl, Seed-Vorschau, Bestenlisten, Eintragen.
-import {RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,CLS,UNL,UNLD,causeName} from '../core/config.js';
+import {VER,RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,CLS,UNL,UNLD,causeName} from '../core/config.js';
+import {achList,achName,achDesc,achById,award} from '../core/achievements.js';
 import {L,nf,locale} from '../core/i18n.js';
 import {normSeed,dayKey,dailySeed} from '../core/rng.js';
 import {genRoom} from '../core/roomgen.js';
-import {loadScores,lp,loadName,storeName} from '../core/storage.js';
+import {loadScores,lp,loadName,storeName,streak} from '../core/storage.js';
 import {S,setScreen,setSel} from '../core/game.js';
 import {on} from '../core/bus.js';
 import {iconURL,playerSpr} from '../render/sprites.js';
@@ -64,7 +65,15 @@ function renderDaily(){
   $('dailyDate').textContent=dayLabel(day);
   $('dailyInfo').textContent=L(`Für alle Spieler gleich, mit eigener Bestenliste. Neuer Seed in ${h} Std. ${m} Min. (um ${at} Uhr).`,
     `The same for every player, with its own leaderboard. New seed in ${h} h ${m} min (at ${at}).`);
-  $('dailyBtn').textContent=L(`Tagesrun als ${CLS[S.sel].n} starten`,`Play daily run as ${CLS[S.sel].n}`);
+  // Serie und erster Versuch
+  const st=streak(day),sx=$('streakTxt');
+  sx.hidden=false;sx.classList.toggle('on',st.n>0);
+  sx.textContent=(st.n>1?L(`Serie: ${st.n} Tage in Folge gespielt.`,`Streak: played ${st.n} days in a row.`):st.n===1?L('Serie: 1 Tag gespielt.','Streak: 1 day played.'):L('Noch keine Serie.','No streak yet.'))
+    +' '+(st.today?L('Dein Versuch für heute ist gespielt; weitere Versuche zählen nur für die Gesamtliste.','Your attempt for today is played; further attempts only count for the overall board.')
+      :st.n>0?L('Spiel heute, damit sie nicht reißt. Nur der erste Versuch zählt für die Tagesliste.','Play today to keep it going. Only your first attempt counts for today’s board.')
+      :L('Nur der erste Versuch des Tages zählt für die Tagesliste.','Only your first attempt of the day counts for today’s board.'))
+    +(st.best>st.n&&st.best>1?L(` Längste Serie: ${st.best} Tage.`,` Longest streak: ${st.best} days.`):'');
+  $('dailyBtn').textContent=st.today?L(`Nochmal als ${CLS[S.sel].n} (außer Wertung)`,`Again as ${CLS[S.sel].n} (not ranked today)`):L(`Tagesrun als ${CLS[S.sel].n} starten`,`Play daily run as ${CLS[S.sel].n}`);
   if(day!==shownDay){shownDay=day;loadDaily($('dsTitle'),day)}   // neuer Tag: neue Liste
 }
 // Countdown und Tageswechsel, solange der Startbildschirm offen ist
@@ -90,10 +99,17 @@ function renderGlobal(el,list,hl,kind){
   if(list==='loading')return note(L('Lade Bestenliste …','Loading leaderboard …'));
   if(list===null)return note(L('Die gemeinsame Bestenliste ist hier gerade nicht erreichbar.','The shared leaderboard can’t be reached from here right now.'));
   if(!list.length)return note(kind==='day'?L('Heute hat sich noch niemand eingetragen. Der erste Platz ist frei.','Nobody has submitted a run today. First place is free.'):L('Noch niemand eingetragen. Der erste Platz ist frei.','Nobody on the board yet. First place is free.'));
-  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span class="nm">${esc(s.name)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
+  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span class="nm">${esc(s.name)}${playBtn(s,kind)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
+}
+/* Knopf „Run ansehen“: nur für Einträge mit Aufzeichnung in der aktuellen Fassung der Spielregeln (ui/watch.js spielt ab) */
+let boardDay='';
+function playBtn(s,kind){
+  if(s.rp!==VER||!/^[a-z0-9]{6,24}$/.test(String(s.id)))return'';
+  const t=L('Run ansehen','Watch run');
+  return` <button class="play" data-replay="${s.id}"${kind==='day'&&boardDay?` data-day="${boardDay}"`:''} title="${t}" aria-label="${t}: ${esc(s.name)}">▶</button>`;
 }
 function loadGlobal(el,hl){renderGlobal(el,'loading');fetchGlobal().then(l=>renderGlobal(el,l,hl))}
-function loadDaily(el,day,hl){renderGlobal(el,'loading',hl,'day');fetchGlobal(day).then(l=>renderGlobal(el,l,hl,'day'))}
+function loadDaily(el,day,hl){boardDay=day;renderGlobal(el,'loading',hl,'day');fetchGlobal(day).then(l=>renderGlobal(el,l,hl,'day'))}
 function sendMsg(t,k){const m=$('sendMsg');m.textContent=t;m.className='hint'+(k?' '+k:'')}
 async function sendScore(){
   const e=S.lastEntry;if(!e||e.quit||e.sent||sending)return;
@@ -121,7 +137,7 @@ function renderEnd(refresh=true){
   const e=S.lastEntry;if(!e)return;$('scrEnd').classList.toggle('won',e.win);$('scrEnd').classList.toggle('quit',!e.win&&!!e.quit);
   const cn=CLS[e.cls].n,cause=causeName(e.cause);
   $('endEyebrow').textContent=(e.win?L('Rettungskapsel gestartet','Escape pod launched'):e.quit?L('Rückzug angeordnet','Retreat ordered'):L('Signal verloren','Signal lost'))
-    +(e.day?' · '+L('Seed des Tages','Seed of the day')+' '+dayLabel(e.day):'');
+    +(e.day?' · '+L('Seed des Tages','Seed of the day')+' '+dayLabel(e.day):e.seed===dailySeed(dayKey())?' · '+L('Seed des Tages, weiterer Versuch (außer Wertung für die Tagesliste)','Seed of the day, further attempt (not ranked on today’s board)'):'');
   $('endTitle').textContent=e.win?L('Entkommen','Escaped'):e.quit?L('Abgebrochen in Raum ','Abandoned in room ')+e.room:L('Gefallen in Raum ','Fell in room ')+e.room;
   $('endText').textContent=e.win?L(`Als ${cn} hast du die Brutmutter getötet und die IKARUS-7 lebend verlassen.`,`As the ${cn} you killed the Brood Mother and left the IKARUS-7 alive.`)
     :e.quit?L(`Du hast den Einsatz als ${cn} abgebrochen. Abgebrochene Runs kommen nicht in die Bestenliste.`,`You abandoned the mission as the ${cn}. Abandoned runs don’t go on the leaderboard.`)
@@ -132,6 +148,11 @@ function renderEnd(refresh=true){
   const s=shareText(e);share=s;
   $('shareTxt').value=s.lines.join(' · ')+' '+s.url;
   $('shareBtn').hidden=!canShare(s);
+  // Neue Erfolge dieses Runs
+  const neu=(e.ach||[]).map(achById).filter(Boolean);
+  $('achNew').hidden=!neu.length;$('achNewLbl').textContent=neu.length>1?L('Neue Erfolge','New achievements'):L('Neuer Erfolg','New achievement');
+  $('achNewList').innerHTML=neu.map(a=>`<li class="got"><b>${achName(a)}</b><span>${achDesc(a)}</span></li>`).join('');
+  $('watchBtn').hidden=!e.rec||!!e.quit;
   renderScores($('hsEnd'),e.id);
   $('submitBox').hidden=!!e.quit;
   const nm=loadName();
@@ -144,10 +165,16 @@ function renderEnd(refresh=true){
 function showScreen(s){
   setScreen(s);
   $('scrTitle').hidden=s!=='title';$('scrGame').hidden=s!=='game';$('scrEnd').hidden=s!=='end';
-  $('quitBtn').hidden=s!=='game';$('quitBtn').textContent=L('Run abbrechen','Abandon run');$('quitBtn').classList.remove('warn');
-  if(s==='title'){shownDay='';renderClasses();renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
+  $('quitBtn').hidden=s!=='game'||!!S.watch;$('quitBtn').textContent=L('Run abbrechen','Abandon run');$('quitBtn').classList.remove('warn');
+  if(s==='title'){shownDay='';award(null);renderAch();renderClasses();renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
   if(s==='game')window.scrollTo(0,0);
   if(s==='end'){renderEnd();$('topInfo').textContent=TOP_END();window.scrollTo(0,0)}
+}
+/* Erfolge auf dem Startbildschirm: erreichte zuerst hervorgehoben, offene mit ihrer Aufgabe */
+function renderAch(){
+  const list=achList(),n=list.filter(a=>a.at).length;
+  $('achLbl').textContent=L(`Erfolge · ${n} von ${list.length}`,`Achievements · ${n} of ${list.length}`);
+  $('achList').innerHTML=list.map(a=>`<li${a.at?' class="got"':''}><b>${a.at?'✓ ':''}${achName(a)}</b><span>${achDesc(a)}</span></li>`).join('');
 }
 function lpLine(k){
   const l=lp(k),nx=UNL.findIndex(t=>l<t);
@@ -179,7 +206,7 @@ on('screen',showScreen);
 on('lang',()=>{
   const s=S.screen;
   $('quitBtn').textContent=L('Run abbrechen','Abandon run');$('quitBtn').classList.remove('warn');
-  if(s==='title'){renderClasses();renderScores($('hsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
+  if(s==='title'){renderAch();renderClasses();renderScores($('hsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
   if(s==='end'){renderEnd(false);$('topInfo').textContent=TOP_END()}
   for(const [el,[list,hl,kind]] of lastGlobal)if(!el.closest('[hidden]'))renderGlobal(el,list,hl,kind);
 });

@@ -69,6 +69,7 @@
         <h2 class="lbl" data-t="dailyLbl">Seed des Tages</h2>
         <div class="daily-head"><span class="daily-seed" id="dailySeed"></span><span class="daily-date" id="dailyDate"></span></div>
         <p class="hint" id="dailyInfo"></p>
+        <p class="streak" id="streakTxt" hidden></p>
         <button id="dailyBtn" class="primary"></button>
       </div>
       <div class="block">
@@ -113,6 +114,11 @@
         <div class="ctrl-wrap" data-controls></div>
       </div>
     </div>
+
+    <div class="block achbox">
+      <h2 class="lbl" id="achLbl">Erfolge</h2>
+      <ul class="ach" id="achList"></ul>
+    </div>
   </section>
 
   <section id="scrGame" hidden>
@@ -122,6 +128,17 @@
           <span class="tut-step" id="tutStep"></span>
           <b class="tut-title" id="tutTitle"></b>
           <p id="tutText"></p>
+        </div>
+        <div class="tut watch" id="watchBox" hidden aria-live="polite">
+          <span class="tut-step" id="watchStep"></span>
+          <b class="tut-title" id="watchTitle"></b>
+          <div class="watch-ctl">
+            <span id="watchSpeedLbl"></span>
+            <button class="btn" data-speed="1" aria-pressed="true">1×</button>
+            <button class="btn" data-speed="2" aria-pressed="false">2×</button>
+            <button class="btn" data-speed="4" aria-pressed="false">4×</button>
+            <button class="btn" id="watchStop"></button>
+          </div>
         </div>
         <div class="stage" id="stage">
                     <div class="banner" id="banner" aria-live="polite"></div>
@@ -190,6 +207,10 @@
     <h1 id="endTitle"></h1>
     <p id="endText"></p>
     <dl class="endstats" id="endStats"></dl>
+    <div class="achnew" id="achNew" hidden>
+      <h2 class="lbl" id="achNewLbl"></h2>
+      <ul class="ach" id="achNewList"></ul>
+    </div>
     <div class="submit" id="submitBox">
       <label for="nameIn" data-t="nameLbl">Name für die Bestenliste aller Spieler</label>
       <div class="seedrow">
@@ -208,6 +229,7 @@
     </div>
     <div class="endbtns">
       <button id="againBtn" class="primary" data-t="again">Gleicher Seed, neuer Versuch</button>
+      <button id="watchBtn" class="btn" data-t="watchRun" hidden>Run ansehen</button>
       <button id="newBtn" class="btn" data-t="back">Zurück zum Start</button>
     </div>
     <h2 class="lbl" data-t="dailyBoardLbl" id="dsEndLbl" hidden>Bestenliste heute</h2>

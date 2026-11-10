@@ -3,6 +3,9 @@
 import {L,localize} from './i18n.js';
 
 const RW=17,RH=13,T=8,ROOMS=9,INV=6;
+/* Fassung der Spielregeln. Hochzählen, sobald sich der Spielablauf ändert (Regeln, Werte, Raumgenerator):
+   Gespeicherte Wiederholungen älterer Fassungen lassen sich dann nicht mehr abspielen und werden nicht mehr angeboten. */
+const VER=5;
 const WALL=0,FLOOR=1,BLOCK=2,DOOR=3,EXIT=4,POD=5;
 const D8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 const OPP={L:'R',R:'L',T:'B',B:'T'};
@@ -119,4 +122,4 @@ EN.EVENTS={dark:{n:'Power Outage',d:'You and the enemies only see 4 tiles far.'}
 localize({TIERNAME,ROOMNAMES,CLS,UNLD,AB2,MON,IT,EVENTS},EN);
 
 export {roomTitle,bossRoomName,causeName};
-export {RW,RH,T,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,TIERNAME,ROOMNAMES,FLOORTINT,ALPH,tierOf,CLS,UNL,UNLD,AB2,MON,RTABLE,ELITE,IT,ITABLE,SHAPES,EVENTS,EVENT_CHANCE,DARK_SIGHT};
+export {VER,RW,RH,T,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,TIERNAME,ROOMNAMES,FLOORTINT,ALPH,tierOf,CLS,UNL,UNLD,AB2,MON,RTABLE,ELITE,IT,ITABLE,SHAPES,EVENTS,EVENT_CHANCE,DARK_SIGHT};

@@ -5,7 +5,8 @@ import {RW,RH,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,M
 import {h32,wpick,dailyDay} from './rng.js';
 import {solidT,cheb,losMap,canStep} from './geometry.js';
 import {sideTile,genRoom} from './roomgen.js';
-import {saveScore,addLP,lp,storeRun,storeTutorialDone} from './storage.js';
+import {saveScore,addLP as addLPStore,lp as lpStore,storeRun,storeTutorialDone,claimDaily} from './storage.js';
+import {award} from './achievements.js';
 import {emit} from './bus.js';
 import {L,localize} from './i18n.js';
 
@@ -15,6 +16,18 @@ const timing={scale:1,save:true};
 const sleep=ms=>timing.scale?new Promise(r=>setTimeout(r,ms*timing.scale)):Promise.resolve();
 /* Verzögerte Aufgabe; sie verfällt, wenn inzwischen ein anderer Run läuft (neu gestartet oder neu geladen) */
 const later=(fn,ms)=>{const run=G;setTimeout(()=>{if(G===run)fn()},ms*timing.scale)};
+
+/* Wiederholung ansehen (ui/watch.js): Solange watch gesetzt ist, bleibt der Browserspeicher unberührt.
+   LP kommen aus der Aufzeichnung, Spielstände landen in watch.saves, es gibt keinen Eintrag und keine Erfolge,
+   und Eingaben nimmt das Spiel nur vom Abspieler an (watch.feed). */
+let watch=null;
+const lp=cls=>watch?watch.lp:lpStore(cls);
+const addLP=(cls,x)=>watch?(watch.lp+=x):addLPStore(cls,x);
+/* Seed des Tages: Nur der erste Versuch je Tag bekommt das Datum (und zählt damit für die Tagesliste) */
+const firstDaily=seed=>{const d=dailyDay(seed);return d&&claimDaily(d)?d:null};
+/* Zähler für die Erfolge: Schüsse, benutzte Items, Schaden im aktuellen Raum, Räume ohne Schaden, Boss ohne Schaden,
+   Abschüsse durch Mine und Geschütz */
+const newStats=()=>({shots:0,used:0,dmg:0,clean:0,boss:0,mineK:0,sentryK:0});
 
 /* Brücken zur Darstellung */
 const fx={push:o=>emit('fx',o)};
@@ -74,7 +87,7 @@ function newMon(t,x,y,elite){const d=MON[t];const hp=elite?Math.round(d.hp*1.6):
 /* opts.day: nur beim Nachspielen auf dem Server (dort gilt das Datum des Originals, nicht das heutige) */
 function startRun(seed,cls,opts){
   const c=CLS[cls];
-  G={seed,cls,day:opts&&'day' in opts?opts.day:dailyDay(seed),lp0:lp(cls),rec:[],medArm:null,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
+  G={seed,cls,day:opts&&'day' in opts?opts.day:firstDaily(seed),lp0:lp(cls),st:newStats(),rec:[],medArm:null,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
      map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,event:null,mines:[],sentry:null,
      p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   if(unl(0))startPerk();
@@ -90,7 +103,7 @@ function startRun(seed,cls,opts){
 const TUT={start:{x:2,y:6},cell:{x:4,y:8},crates:[[7,3],[7,4],[7,5],[7,6],[7,7],[7,8],[7,9],[8,3],[8,9]],drone:{x:11,y:6},exit:{side:'R',pos:6}};
 function startTutorial(){
   const cls='marine',c=CLS[cls];
-  G={seed:'TUTORIAL',cls,tut:true,day:null,lp0:0,rec:null,medArm:null,room:1,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32('TUTORIAL!kampf'),nid:1,cause:'',
+  G={seed:'TUTORIAL',cls,tut:true,day:null,lp0:0,st:newStats(),rec:null,medArm:null,room:1,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32('TUTORIAL!kampf'),nid:1,cause:'',
      map:[],deco:[],mons:[],items:[],exits:[TUT.exit],entry:'L',name:L('Übungsraum','Training room'),elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,event:null,mines:[],sentry:null,
      p:{x:TUT.start.x,y:TUT.start.y,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){G.map.push(x===0||y===0||x===RW-1||y===RH-1?WALL:FLOOR);G.deco.push(((x*7+y*13)%10)/10)}
@@ -111,7 +124,7 @@ function endTutorial(done){
 function enterRoom(idx,entry){
   const d=genRoom(G.seed,idx,G.path,entry);
   Object.assign(G,{room:idx,map:d.map,deco:d.deco,items:d.items||[],exits:d.exits,entry,name:d.name,elite:d.elite,boss:d.boss,bossDead:false,pod:d.pod,round:0,target:null,active:null,event:d.event||null,mines:[],sentry:null});
-  G.mons=d.mons.map(m=>newMon(m.t,m.x,m.y,m.elite));
+  G.mons=d.mons.map(m=>newMon(m.t,m.x,m.y,m.elite));G.st.dmg=0;
   G.p.x=d.start.x;G.p.y=d.start.y;
   if(G.event==='alarm')G.mons.forEach(m=>{m.aware=true;m.known={x:G.p.x,y:G.p.y}});
   log(L(`Raum ${idx}/${ROOMS}: ${d.name}. Die Tür hinter dir verriegelt.`,`Room ${idx}/${ROOMS}: ${d.name}. The door locks behind you.`),'info');
@@ -140,6 +153,7 @@ function endTurn(){
   enemyPhase();
 }
 function autoEnd(){
+  if(watch)return;   // beim Ansehen löst der Abspieler das automatische Zugende aus (watchAutoEnd), damit es keiner Eingabe zuvorkommt
   if(!G.offer&&G.phase==='player'&&G.p.mp<=0&&G.p.act<=0&&!pendingEnd&&live()){
     pendingEnd=true;later(()=>{pendingEnd=false;if(live()&&G.phase==='player'&&!busy&&G.p.mp<=0&&G.p.act<=0)endTurn()},500);
   }
@@ -170,7 +184,7 @@ async function sentryTurn(){
   if(ts.length){
     const m=ts[0],d=MON[m.t];
     fx.push({type:'line',a:{x:s.x,y:s.y},b:{x:m.x,y:m.y},col:'#5fd3e6',t0:performance.now(),dur:200});SFX.zap();
-    if(rnd()<.85){const dmg=Math.max(1,3+(unl(1)?2:0)+ri(0,1)-Math.floor(d.def/2));log(L(`Dein Geschütz trifft ${d.acc}: ${dmg} Schaden.`,`Your sentry gun hits ${d.acc}: ${dmg} damage.`));hitMon(m,dmg)}
+    if(rnd()<.85){const dmg=Math.max(1,3+(unl(1)?2:0)+ri(0,1)-Math.floor(d.def/2));log(L(`Dein Geschütz trifft ${d.acc}: ${dmg} Schaden.`,`Your sentry gun hits ${d.acc}: ${dmg} damage.`));hitMon(m,dmg,'sentryK')}
     else log(L(`Dein Geschütz verfehlt ${d.acc}.`,`Your sentry gun misses ${d.acc}.`),'dim');
     G.mons=G.mons.filter(x=>x.hp>0);computeVis();updateUI();await sleep(260);if(G!==run)return;
   }
@@ -193,10 +207,11 @@ function computeVis(){
 function pathTo(i){const out=[];let c=i;while(c>=0&&c!==G.p.x+G.p.y*RW){out.push(c);c=PARENT[c]}return out.reverse()}
 
 /* ---------- Kampf ---------- */
-function hitMon(m,dmg){
+/* src: Zähler für den Abschuss ('mineK', 'sentryK'), sonst leer */
+function hitMon(m,dmg,src){
   m.hp-=dmg;m.aware=true;m.known={x:G.p.x,y:G.p.y};
   fx.push({type:'flash',x:m.x,y:m.y,t0:performance.now(),dur:180});
-  if(m.hp<=0)killMon(m);
+  if(m.hp<=0){if(src)G.st[src]++;killMon(m)}
 }
 function killMon(m){
   const d=MON[m.t];G.kills++;log(L(`${d.nom} ist erledigt.`,`${d.nom} is down.`),'good');SFX.kill();gainXp(d.xp*(m.elite?2:1));
@@ -234,7 +249,7 @@ function takePerk(i){
   G.offer=null;G.picks--;if(G.picks>0)offerPerks();
   computeVis();updateUI();autoEnd();
 }
-function hurtPlayer(dmg,cause){const p=G.p;p.hp-=dmg;hurtT=performance.now();flashStage();if(p.hp<=0){p.hp=0;die(cause)}}
+function hurtPlayer(dmg,cause){const p=G.p;p.hp-=dmg;G.st.dmg+=dmg;hurtT=performance.now();flashStage();if(p.hp<=0){p.hp=0;die(cause)}}
 /* Angriffsart: hit (Nahkampf), shoot (Geschütz), spit (Brutmutter) */
 const VERB={hit:['trifft','hits'],shoot:['beschießt','shoots'],spit:['bespuckt','spits at']};
 function monAttack(m,base,kind){
@@ -264,7 +279,7 @@ function shootAt(m){
   const p=G.p;if(p.act<=0){log(ACTION_USED(),'dim');updateUI();return}
   if(!canShoot()){log(L('Keine Munition. Energiezellen laden den Blaster.','No ammo. Energy cells reload the blaster.'),'warn');updateUI();return}
   /* Ohne Munition greift die Späherin zur Nadelpistole: unbegrenzt, aber nur halb so stark. */
-  const side=p.ammo<=0,weak=side&&!unl(0),amb=ambush();useAction();if(!side)p.ammo--;G.target=null;
+  const side=p.ammo<=0,weak=side&&!unl(0),amb=ambush();useAction();if(!side)p.ammo--;G.target=null;G.st.shots++;
   fx.push({type:'line',a:{x:p.x,y:p.y},b:{x:m.x,y:m.y},col:side?'#9aa6b2':'#5fd3e6',t0:performance.now(),dur:180});SFX.shoot();
   const d=MON[m.t];
   if(rnd()<.85){const dmg=Math.max(1,(weak?2:4+Math.floor(p.lvl/2))+ri(0,weak?1:2)-Math.floor(d.def/2))*amb;log(L(`${side?CLS[G.cls].side:'Blaster'} trifft ${d.acc}: ${dmg} Schaden.`,`${side?CLS[G.cls].side:'Blaster'} hits ${d.acc}: ${dmg} damage.`));hitMon(m,dmg)}
@@ -367,7 +382,7 @@ function useItem(idx){
       const[x,y]=best[Math.floor(rnd()*best.length)];p.x=x;p.y=y;G.mons.forEach(m=>{if(!canSee(m))m.known=null});
       log(L('Phasensprung. Dir ist übel, aber du bist weg.','Phase jump. You feel sick, but you are gone.'),'info');SFX.emp();break}
   }
-  p.inv.splice(idx,1);
+  p.inv.splice(idx,1);G.st.used++;
   if(combat){p.act=0;afterAction()}else{computeVis();updateUI()}
 }
 /* Ablegen kostet keine Aktion. Liegt schon etwas unter dir, wird getauscht. */
@@ -392,7 +407,7 @@ function pickupHere(){
 function throwNade(tx,ty){
   const p=G.p,{slot,ab}=G.target;G.target=null;
   if(ab)p.cd2=AB2.marine.cd+1;
-  else{if(p.inv[slot]!=='nade'){updateUI();return}p.inv.splice(slot,1)}
+  else{if(p.inv[slot]!=='nade'){updateUI();return}p.inv.splice(slot,1);G.st.used++}
   useAction();
   fx.push({type:'line',a:{x:p.x,y:p.y},b:{x:tx,y:ty},col:'#8bdc5f',t0:performance.now(),dur:200});
   fx.push({type:'boom',x:tx,y:ty,t0:performance.now(),dur:400});SFX.boom();log(L('Splittergranate!','Frag grenade!'),'info');
@@ -468,6 +483,7 @@ function tileClick(tx,ty){
 function checkClear(){
   if(G.phase!=='player'||G.mons.some(m=>m.hp>0))return;
   G.phase='explore';G.cleared++;G.mons=[];G.target=null;G.sentry=null;G.mines=[];const p=G.p;
+  if(!G.st.dmg){G.st.clean++;if(G.boss)G.st.boss=1}
   const heal=Math.min(3,p.max-p.hp);p.hp+=heal;
   // Türen öffnen. Die Anzeige an jeder Tür verrät, was dahinter wartet (der nächste Raum steht durch Seed und Weg schon fest).
   G.exits.forEach(e=>{const t=sideTile(e.side,e.pos);G.map[t.x+t.y*RW]=EXIT;
@@ -549,7 +565,7 @@ async function monTurn(m){
     const mine=mineAt(m.x,m.y);
     if(mine){G.mines.splice(G.mines.indexOf(mine),1);const dmg=Math.max(1,8-Math.floor(d.def/2));
       fx.push({type:'boom',x:m.x,y:m.y,t0:performance.now(),dur:400});SFX.boom();log(L(`${d.nom} tritt auf deine Mine: ${dmg} Schaden.`,`${d.nom} steps on your mine: ${dmg} damage.`),'good');
-      hitMon(m,dmg);computeVis();updateUI();await sleep(300);if(gone()||m.hp<=0)return}
+      hitMon(m,dmg,'mineK');computeVis();updateUI();await sleep(300);if(gone()||m.hp<=0)return}
     sees=canSee(m);if(sees)notice();
   }
   if(await attack())return;
@@ -558,19 +574,22 @@ async function monTurn(m){
 
 const unl=i=>!G.tut&&lp(G.cls)>=UNL[i];   // im Tutorial ohne Freischaltungen
 let lastEntry=null;
-function saveRun(){if(G&&G.tut)return;if(timing.save)storeRun(G&&screen==='game'&&!G.over?{G,screen,sel}:null)}
+function saveRun(){if(G&&G.tut)return;
+  if(watch){if(watch.keep&&G&&screen==='game'&&!G.over)watch.saves.push(JSON.stringify({G,screen,sel}));return}
+  if(timing.save)storeRun(G&&screen==='game'&&!G.over?{G,screen,sel}:null)}
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
   if(G.tut){updateUI();later(()=>{if(G&&G.over)endTutorial(false)},G.quit?0:1200);return}   // Tutorial: kein Eintrag, zurück zum Start
   const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,day:G.day||null,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
   // Abgebrochene Runs zählen nicht für die Bestenliste. Aufzeichnung (rec, lp0) nur für das Eintragen, nicht im Browser speichern.
-  lastEntry={...entry,rec:G.rec||null,lp0:G.lp0};if(!entry.quit)saveScore(entry);updateUI();
+  if(watch){updateUI();const w=watch;later(()=>{if(watch===w)emit('watch','end',entry)},900);return}   // Wiederholung: nichts speichern
+  lastEntry={...entry,rec:G.rec||null,lp0:G.lp0,ach:entry.quit?[]:award({...entry,st:G.st})};if(!entry.quit)saveScore(entry);updateUI();
   later(()=>{if(G&&G.over)showScreen('end')},G.win?900:1200);
 }
 
 /* ---------- Zusätzliche Einstiege für Oberfläche und Tests ---------- */
 function cancelTarget(){if(G&&G.target){G.target=null;log(AIM_CANCEL(),'dim');updateUI()}}
-function quitRun(){if(G&&!G.over){G.alive=false;G.quit=true;G.cause='quit';log(L('Einsatz abgebrochen.','Mission abandoned.'),'warn');finish()}}
+function quitRun(){if(watch)return;if(G&&!G.over){G.alive=false;G.quit=true;G.cause='quit';log(L('Einsatz abgebrochen.','Mission abandoned.'),'warn');finish()}}
 /* Gespeicherten Run prüfen: Er kommt aus dem Browserspeicher und kann veraltet, beschädigt oder verändert sein.
    Alles, was Logik und Darstellung später ungeprüft benutzen, muss hier die richtige Form haben. */
 const isInt=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b;
@@ -600,6 +619,7 @@ function validRun(data){
     if(G.event!=null&&!EVENTS[G.event])return false;
     if(!Array.isArray(G.mines)||!G.mines.every(onMap))return false;
     if(G.sentry!=null&&!(onMap(G.sentry)&&isNum(G.sentry.ttl)))return false;
+    const st=G.st;if(!st||!['shots','used','dmg','clean','boss','mineK','sentryK'].every(k=>isInt(st[k],0,1e6)))return false;
     if(G.medArm!=null&&!(isInt(G.medArm.idx,0,INV-1)&&isInt(G.medArm.seq,0,1e7)))return false;
     return true;
   }catch(e){return false}
@@ -608,7 +628,7 @@ function validRun(data){
    Der Prüfwert des geladenen Stands kommt als Ereignis R in die Aufzeichnung, damit der Server beim Nachspielen
    genau an dieser Stelle ebenfalls „neu lädt“ (dort entsteht derselbe Stand). */
 function restore(data){
-  if(!validRun(data)){if(data)storeRun(null);return false}
+  if(!validRun(data)){if(data&&!watch)storeRun(null);return false}
   G=data.G;if(data.sel&&CLS[data.sel])sel=data.sel;finishing=false;busy=false;pendingEnd=false;hover=null;
   if(G.rec)G.rec.push(['R',runHash(G),lp(G.cls)]);
   showScreen('game');
@@ -625,7 +645,7 @@ const runHash=g=>{const {log,name,...rest}=g;const s=JSON.stringify(rest);return
    Interne Aufrufe (z. B. stepPlayer → endTurn, automatisches Zugende) werden nicht aufgezeichnet. */
 const recArg=v=>typeof v==='boolean'?+v:v;
 function rec(code,args){if(G&&G.rec)G.rec.push([code,G.rounds,G.phase==='explore'?'x':'p',...args.map(recArg)])}
-const recorded=(code,ok,fn)=>(...a)=>{if(ok(...a))rec(code,a);return fn(...a)};
+const recorded=(code,ok,fn)=>(...a)=>{if(watch&&!watch.feed)return;if(ok(...a))rec(code,a);return fn(...a)};
 const okInput=()=>canInput();
 const ACTIONS={
   s:recorded('s',okInput,stepPlayer),
@@ -642,6 +662,11 @@ const ACTIONS={
 };
 
 const setScreen=s=>{screen=s};
+/* Wiederholung: Abspieler an- und abmelden; abortRun hält den laufenden Run an (laufende Abläufe wie der Gegnerzug
+   merken am ausgetauschten G, dass sie aufhören müssen) */
+function setWatch(w){watch=w}
+function watchAutoEnd(){if(watch&&live()&&G.phase==='player'&&!busy&&!G.offer&&G.p.mp<=0&&G.p.act<=0)endTurn()}
+function abortRun(){if(G)G={...G,over:true};busy=false;finishing=true;pendingEnd=false}
 const setSel=k=>{if(CLS[k])sel=k};
 const setHover=h=>{hover=h};
 
@@ -649,7 +674,7 @@ const setHover=h=>{hover=h};
 const S={
   get G(){return G},get VIS(){return VIS},get REACH(){return REACH},get PARENT(){return PARENT},
   get screen(){return screen},get sel(){return sel},get busy(){return busy},get hover(){return hover},
-  get hurtT(){return hurtT},get lastEntry(){return lastEntry},
+  get hurtT(){return hurtT},get lastEntry(){return lastEntry},get watch(){return watch},
 };
 
 /* Nach außen nur die aufgezeichneten Fassungen der Eingaben */
@@ -658,6 +683,6 @@ export {S,timing,PERKS,ACTIONS,runHash,
   startRun,startTutorial,enterRoom,startRound,
   endTurn_ as endTurn,stepPlayer_ as stepPlayer,tileClick_ as tileClick,fireButton_ as fireButton,ability_ as ability,ability2_ as ability2,
   useItem_ as useItem,dropItem_ as dropItem,pickupHere_ as pickupHere,takePerk_ as takePerk,cancelTarget_ as cancelTarget,
-  quitRun,restore,validRun,setScreen,setSel,setHover,computeVis,updateUI,
+  quitRun,restore,validRun,setWatch,abortRun,watchAutoEnd,setScreen,setSel,setHover,computeVis,updateUI,
   sentryAt,mineAt,sight,
   atk,def,need,dodge,abCd,score,live,canInput,inCombat,monAt,visMonAt,itemAt,canSee,canShoot,shootable,shootTargets,nadeOk,pathTo,unl,lp};

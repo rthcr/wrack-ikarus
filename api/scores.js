@@ -1,6 +1,7 @@
 // Gemeinsame Bestenliste für Wrack Ikarus.
 // GET  /api/scores            -> Top 20 aller Zeiten
 // GET  /api/scores?day=JJJJ-MM-TT -> Top 20 des Seeds des Tages
+// GET  /api/scores?replay=ID[&day=JJJJ-MM-TT] -> Aufzeichnung eines Eintrags zum Ansehen (Wiederholung)
 // POST /api/scores            -> neuen Run eintragen. Der Server spielt den Run aus seiner Aufzeichnung (rec) nach
 //                                und trägt nur ein, was dabei herauskommt (src/core/replay.js);
 //                                mit day und dem passenden Tages-Seed zusätzlich in die Tagesliste
@@ -13,13 +14,16 @@ const REDIS_TOKEN = process.env.KV_REST_API_TOKEN;
 
 const BOARD = 'wi:board';      // Sorted Set: Punkte -> Eintrags-ID
 const ENTRIES = 'wi:entries';  // Hash: Eintrags-ID -> JSON
+const RECS = 'wi:recs';        // Hash: Eintrags-ID -> JSON {v, lp0, day, rec} (Aufzeichnung zum Ansehen)
+const REC_MAX = 300000;        // größere Aufzeichnungen werden nicht aufgehoben (Zeichen)
 const KEEP = 200;              // so viele Einträge bleiben gespeichert
 const TOP = 20;                // so viele liefert GET aus
 const PER_MINUTE = 5;          // Einträge pro Minute und Anschluss
 const ROOMS = 9;
 const DAY_TTL = 8 * 24 * 3600; // Tageslisten werden nach 8 Tagen gelöscht
 const dayBoard = (d) => 'wi:day:' + d;          // Sorted Set je Tag
-const dayEntries = (d) => 'wi:day:' + d + ':e'; // Hash je Tag (eigene Kopie, unabhängig vom Kürzen der Gesamtliste)
+const dayEntries = (d) => 'wi:day:' + d + ':e';
+const dayRecs = (d) => 'wi:day:' + d + ':r';    // Aufzeichnungen je Tag (laufen mit der Tagesliste ab) // Hash je Tag (eigene Kopie, unabhängig vom Kürzen der Gesamtliste)
 const CLASSES = ['marine', 'tech', 'scout', 'eng'];
 
 async function redis(commands) {
@@ -103,7 +107,7 @@ async function topList(board = BOARD, entries = ENTRIES) {
     .map((r) => {
       try {
         const e = JSON.parse(r);
-        return { id: e.id, name: e.name, score: e.score, cls: e.cls, seed: e.seed, room: e.room, win: e.win, rounds: e.rounds, kills: e.kills, lvl: e.lvl, date: e.date };
+        return { id: e.id, name: e.name, score: e.score, cls: e.cls, seed: e.seed, room: e.room, win: e.win, rounds: e.rounds, kills: e.kills, lvl: e.lvl, date: e.date, rp: e.rp || 0 };
       } catch (err) {
         return null;
       }
@@ -133,8 +137,19 @@ module.exports = async function handler(req, res) {
   }
   try {
     if (req.method === 'GET') {
-      let day = req.query && req.query.day;
-      if (day === undefined) { try { day = new URL(req.url, 'http://x').searchParams.get('day'); } catch (err) { day = null; } }
+      const q = (k) => { let v = req.query && req.query[k]; if (v === undefined) { try { v = new URL(req.url, 'http://x').searchParams.get(k); } catch (err) { v = null; } } return v; };
+      const day = q('day'), rid = q('replay');
+      // Aufzeichnung eines Eintrags: erst in der Gesamtliste suchen, sonst in der Tagesliste
+      if (rid) {
+        if (typeof rid !== 'string' || !/^[a-z0-9]{6,24}$/.test(rid)) { res.status(400).json({ error: 'Ungültige Daten.' }); return; }
+        let [ent, rec] = await redis([['HGET', ENTRIES, rid], ['HGET', RECS, rid]]);
+        if ((!ent || !rec) && isDayFormat(day)) [ent, rec] = await redis([['HGET', dayEntries(day), rid], ['HGET', dayRecs(day), rid]]);
+        let e = null, r = null;
+        try { e = JSON.parse(ent); r = JSON.parse(rec); } catch (err) { e = null; }
+        if (!e || !r) { res.status(404).json({ error: 'Zu diesem Eintrag gibt es keine Aufzeichnung.' }); return; }
+        res.status(200).json({ id: e.id, name: e.name, seed: e.seed, cls: e.cls, score: e.score, win: e.win, room: e.room, v: r.v, lp0: r.lp0, day: r.day || null, rec: r.rec });
+        return;
+      }
       if (day) {
         if (!isDayFormat(day)) { res.status(400).json({ error: 'Ungültiges Datum.' }); return; }
         res.status(200).json({ day, seed: dailySeed(day), scores: await topList(dayBoard(day), dayEntries(day)) });
@@ -179,7 +194,13 @@ module.exports = async function handler(req, res) {
       const id = Date.now().toString(36) + crypto.randomBytes(3).toString('hex');
       const entry = { id, ...e, date: new Date().toISOString() };
       if (!entry.day) delete entry.day;
-      const [, , rank, total] = await redis([
+      // Aufzeichnung zum Ansehen aufheben. day ist das Datum, mit dem nachgespielt wurde (auch wenn der Tag inzwischen abgelaufen ist).
+      const ver = replayModule.VER;
+      const recJson = JSON.stringify({ v: ver, lp0: Math.max(0, Math.min(1e7, Math.floor(Number(body.lp0) || 0))), day: isDayFormat(body.day) ? body.day : null, rec: body.rec });
+      const keepRec = recJson.length <= REC_MAX;
+      if (keepRec) entry.rp = ver;   // rp = Fassung der Spielregeln; das Spiel bietet nur passende Wiederholungen an
+      const [, , , rank, total] = await redis([
+        ...(keepRec ? [['HSET', RECS, id, recJson]] : [['HDEL', RECS, id]]),
         ['HSET', ENTRIES, id, JSON.stringify(entry)],
         ['ZADD', BOARD, String(e.score), id],
         ['ZREVRANK', BOARD, id],
@@ -188,12 +209,13 @@ module.exports = async function handler(req, res) {
       if (total > KEEP) {
         const cut = String(total - KEEP - 1);
         const [old] = await redis([['ZRANGE', BOARD, '0', cut]]);
-        if (old.length) await redis([['ZREMRANGEBYRANK', BOARD, '0', cut], ['HDEL', ENTRIES, ...old]]);
+        if (old.length) await redis([['ZREMRANGEBYRANK', BOARD, '0', cut], ['HDEL', ENTRIES, ...old], ['HDEL', RECS, ...old]]);
       }
       // Seed des Tages: zusätzlich in die Tagesliste
       let daily = null;
       if (e.day) {
-        const b = dayBoard(e.day), h = dayEntries(e.day);
+        const b = dayBoard(e.day), h = dayEntries(e.day), hr = dayRecs(e.day);
+        if (keepRec) await redis([['HSET', hr, id, recJson], ['EXPIRE', hr, String(DAY_TTL)]]);
         const [, , , , dRank, dTotal] = await redis([
           ['HSET', h, id, JSON.stringify(entry)],
           ['ZADD', b, String(e.score), id],
@@ -205,7 +227,7 @@ module.exports = async function handler(req, res) {
         if (dTotal > KEEP) {
           const cut = String(dTotal - KEEP - 1);
           const [old] = await redis([['ZRANGE', b, '0', cut]]);
-          if (old.length) await redis([['ZREMRANGEBYRANK', b, '0', cut], ['HDEL', h, ...old]]);
+          if (old.length) await redis([['ZREMRANGEBYRANK', b, '0', cut], ['HDEL', h, ...old], ['HDEL', hr, ...old]]);
         }
         daily = { day: e.day, rank: dRank + 1, total: dTotal, scores: await topList(b, h) };
       }

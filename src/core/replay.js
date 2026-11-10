@@ -8,9 +8,9 @@
 //
 // Das Spielmodul ist ein Singleton: Es darf immer nur ein Nachspielen gleichzeitig laufen (siehe api/scores.js).
 import * as game from './game.js';
-import {CLS} from './config.js';
+import {CLS,VER} from './config.js';
 
-const RUNKEY='wrack-ikarus-run-v4',LPKEY='wrack-ikarus-lp';
+const RUNKEY='wrack-ikarus-run-v5',LPKEY='wrack-ikarus-lp';
 const CODES='scfabudgpex';
 const MAX_EVENTS=30000;
 
@@ -43,6 +43,7 @@ async function until(cond,budget){
  * @param {{seed:string,cls:string,lp0:number,day:string|null,rec:any[]}} run
  * @returns {Promise<{ok:true,entry:object}|{ok:false,reason:string}>}
  */
+export {checkRec,VER};
 export async function replayRun(run){
   const {seed,cls,day}=run;const lp0=Math.max(0,Math.min(1e7,Math.floor(Number(run.lp0)||0)));
   if(typeof seed!=='string'||!/^[A-Z0-9]{1,10}$/.test(seed)||!CLS[cls])return{ok:false,reason:'Seed oder Klasse ungültig'};

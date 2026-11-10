@@ -36,6 +36,7 @@ src/core/             Spiellogik, OHNE DOM und OHNE Phaser (läuft auch in Node,
   i18n.js             Sprache de/en: L('deutsch','english'), nf() für Zahlen, localize() für Datentabellen
   game.js             Regeln, Runden, Kampf, Items, Gegner-KI; zeichnet jede angenommene Eingabe in G.rec auf
   replay.js           spielt einen Run aus G.rec nach (für den Server, ohne DOM)
+  achievements.js     Erfolge: Liste, Bedingungen, Vergabe
 src/render/           Darstellung
   GameScene.js        Phaser-Szene: Raum, Figuren (gleiten, hüpfen, Ausfallschritt), Licht und Dunkelheit,
                       Markierungen, Partikel, Kamerawackeln
@@ -48,7 +49,8 @@ src/ui/               DOM-Oberfläche: lang.js (Sprachwahl, englische Texte für
                       titleArt.js (animiert das Titelbild, nur solange der Startbildschirm sichtbar ist),
                       controls.js (Steuerungstabelle, füllt alle [data-controls]: Startbildschirm und aufklappbar im Spiel),
                       fullscreen.js (Knopf „Vollbild“; nur sichtbar, wenn der Browser es kann – iPhone nicht),
-                      tutorial.js (Schritte und Texte des Tutorials, Knopf und Hinweis auf dem Startbildschirm)
+                      tutorial.js (Schritte und Texte des Tutorials, Knopf und Hinweis auf dem Startbildschirm),
+                      watch.js (Wiederholung ansehen: Abspieler, Tempo, Knöpfe ▶ in den Bestenlisten)
 src/audio/engine.js   Web-Audio: Dateien laden, Effekte abspielen, Musikspuren überblenden (nahtlose Loops)
 src/audio/sfx.js      Ton im Spiel: Effekte zu Ereignissen, Musik ab Startbildschirm je Deck + Kampfspur, Lautstärken
 public/assets/audio/  erzeugte MP3s und manifest.json (nicht von Hand bearbeiten, sondern neu erzeugen)
@@ -66,7 +68,7 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 
 - **Logik und Darstellung getrennt halten.** `src/core/` greift nie auf `document`, `window` oder Phaser zu.
   Was sichtbar oder hörbar werden soll, meldet die Logik über `emit()` aus `bus.js`:
-  `change` (Oberfläche neu zeichnen), `fx` (Effekt), `sfx` (Ton), `banner`, `hurt`, `screen`, `reset`.
+  `change` (Oberfläche neu zeichnen), `fx` (Effekt), `sfx` (Ton), `banner`, `hurt`, `screen`, `reset`, `watch` (Wiederholung zu Ende).
 - **Determinismus:** Gleicher Seed und gleiche Eingaben müssen denselben Run ergeben. Zufall im Spiel nur über `rnd()` (Kampf)
   bzw. den Raumgenerator, nie `Math.random()` in der Spiellogik.
 - **Punkte:** `score()` in `src/core/game.js` und `calcScore()` in `api/scores.js` müssen gleich rechnen, sonst lehnt der Server Einträge ab.
@@ -95,10 +97,20 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Seed des Tages:** für alle gleich, wechselt um Mitternacht UTC. `dailySeed()` in `src/core/rng.js` und in `api/scores.js`
   müssen gleich rechnen. Ein Run mit dem heutigen Tages-Seed bekommt `G.day`; der Server trägt ihn zusätzlich in
   `wi:day:<Datum>` ein (heute oder gestern, läuft nach 8 Tagen ab). `GET /api/scores?day=JJJJ-MM-TT` liefert die Tagesliste.
+- **Erster Versuch und Serie:** Beim Seed des Tages bekommt nur der erste Versuch je Tag `G.day` (`firstDaily` in game.js, `claimDaily`
+  in storage.js, Schlüssel `wrack-ikarus-tag`); weitere Versuche laufen als normaler Run. Dabei wird auch die Serie (Tage in Folge) gezählt.
+  Das gilt je Browser; der Server kann es nicht prüfen.
+- **Erfolge:** Liste und Bedingungen in `src/core/achievements.js`, Zähler dafür in `G.st` (`newStats` in game.js), vergeben in `finish()`.
+  Gespeichert unter `wrack-ikarus-erfolge`. Neuer Zähler = Feld in `newStats` und in `validRun`.
+- **Run ansehen:** Der Server hebt zu jedem Eintrag die Aufzeichnung auf (`wi:recs`, je Tag `wi:day:<Datum>:r`) und liefert sie über
+  `GET /api/scores?replay=ID`. `ui/watch.js` spielt sie mit echten Wartezeiten ab. Solange `watch` in game.js gesetzt ist, bleibt der
+  Browserspeicher unberührt (LP aus der Aufzeichnung, kein Eintrag, keine Erfolge), Eingaben kommen nur vom Abspieler, und das
+  automatische Zugende löst der Abspieler aus (`watchAutoEnd`). **`VER` in config.js hochzählen, sobald sich der Spielablauf ändert**
+  (Regeln, Werte, Raumgenerator): Ältere Aufzeichnungen passen dann nicht mehr und werden nicht mehr angeboten (`rp` im Eintrag ≠ `VER`).
 - **Gespeicherter Run:** `validRun()` in game.js prüft ihn vor dem Laden vollständig; ein ungültiger wird verworfen.
   Neue Felder in `G` dort mit aufnehmen. Text aus Browserspeicher oder Server nur über `esc()` (ui/esc.js) in HTML einsetzen.
 - **Speicherschlüssel:** Bestenliste und LP teilen sich die Schlüssel mit der klassischen Fassung (Fortschritt gilt in beiden).
-  Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v4`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
+  Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v5`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
 - Nach Logikänderungen `npm run check` laufen lassen.
 - Grafik: Kacheln sind 16×16 (`TS`), die Welt 272×208 Pixel, Phaser skaliert mit `pixelArt: true`.
   Neue Figuren in `art.js`: genau 16 Zeilen à 16 Zeichen, nur Farbzeichen aus `PAL` (plus h/H bzw. x/X zum Umfärben).

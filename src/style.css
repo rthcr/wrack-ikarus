@@ -340,3 +340,27 @@ p{margin:0}
 .ctrl-box{background:var(--panel);border:1px solid var(--line);padding:8px 12px}
 .ctrl-box summary{cursor:pointer;font-family:var(--f-display);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
 .ctrl-box[open] summary{margin-bottom:8px}
+
+/* Serie beim Seed des Tages */
+.streak{font-size:13px;line-height:1.45;color:var(--dim);margin:0}
+.streak.on{color:var(--amber)}
+/* Erfolge */
+.achbox{display:grid;gap:10px}
+.ach{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.ach li{border:1px solid var(--line);background:var(--panel2);padding:8px 10px;display:grid;gap:3px;font-size:12px;line-height:1.4;color:var(--dim)}
+.ach li b{font-family:var(--f-display);font-size:12px;letter-spacing:.05em;font-weight:400;color:var(--dim)}
+.ach li.got{border-color:var(--green);background:#14180f;color:var(--text)}
+.ach li.got b{color:var(--green)}
+.achnew{display:grid;gap:8px}
+/* Wiederholung ansehen */
+.hs .play{background:none;border:1px solid var(--line);color:var(--cyan);font-size:10px;line-height:1;padding:3px 5px;margin-left:6px;border-radius:2px;cursor:pointer;vertical-align:1px}
+.hs .play:hover:not(:disabled){border-color:var(--cyan)}
+.hs .play:disabled{color:var(--dim);cursor:default}
+.tut.watch{border-color:var(--cyan);border-left-color:var(--cyan);background:#0f171b}
+.tut.watch .tut-step{color:var(--cyan)}
+.watch-ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--dim)}
+.watch-ctl .btn{padding:4px 10px;font-size:12px}
+.watch-ctl .btn[aria-pressed="true"]{border-color:var(--cyan);color:var(--cyan)}
+.watch-ctl #watchStop{margin-left:auto}
+.watching .actions,.watching .touch,.watching #endBtn,.watching .inv{pointer-events:none;opacity:.5}
+.hs.day .sd{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
