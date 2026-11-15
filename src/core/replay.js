@@ -10,7 +10,7 @@
 import * as game from './game.js';
 import {CLS,VER} from './config.js';
 
-const RUNKEY='wrack-ikarus-run-v5',LPKEY='wrack-ikarus-lp';
+const RUNKEY='wrack-ikarus-run-v6',LPKEY='wrack-ikarus-lp';
 const CODES='scfabudgpex';
 const MAX_EVENTS=30000;
 
@@ -45,7 +45,7 @@ async function until(cond,budget){
  */
 export {checkRec,VER};
 export async function replayRun(run){
-  const {seed,cls,day}=run;const lp0=Math.max(0,Math.min(1e7,Math.floor(Number(run.lp0)||0)));
+  const {seed,cls,day}=run,camp=run.camp===1?1:0;const lp0=Math.max(0,Math.min(1e7,Math.floor(Number(run.lp0)||0)));
   if(typeof seed!=='string'||!/^[A-Z0-9]{1,10}$/.test(seed)||!CLS[cls])return{ok:false,reason:'Seed oder Klasse ungültig'};
   if(!checkRec(run.rec))return{ok:false,reason:'Aufzeichnung ungültig'};
   const rec=run.rec;
@@ -64,7 +64,7 @@ export async function replayRun(run){
   game.timing.scale=0;game.timing.save=hasReload;   // ohne Neuladen muss nichts gespeichert werden
   const budget={n:2e7,end:Date.now()+8000};   // Obergrenze für Rechenschritte und Zeit (8 s)
   try{
-    game.startRun(seed,cls,{day:day||null});
+    game.startRun(seed,cls,{day:camp?null:day||null,camp});
     const S=game.S;
     for(let i=0;i<rec.length;i++){
       const ev=rec[i];
@@ -87,7 +87,7 @@ export async function replayRun(run){
     if(!await until(()=>S.G&&S.G.over,budget))return{ok:false,reason:'Run endet nicht'};
     const e=S.lastEntry;
     if(!e||e.quit)return{ok:false,reason:'Run abgebrochen'};
-    return{ok:true,spins:2e7-budget.n,entry:{seed:e.seed,cls:e.cls,day:e.day,room:e.room,win:e.win,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,score:e.score}};
+    return{ok:true,spins:2e7-budget.n,entry:{seed:e.seed,cls:e.cls,camp:e.camp,day:e.day,room:e.room,win:e.win,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,score:e.score}};
   }catch(err){
     return{ok:false,reason:'Fehler beim Nachspielen: '+(err&&err.message||err)};
   }finally{

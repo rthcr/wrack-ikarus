@@ -1,17 +1,27 @@
 // Titel- und Endbildschirm: Klassenwahl, Seed-Vorschau, Bestenlisten, Eintragen.
-import {VER,RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,CLS,UNL,UNLD,causeName} from '../core/config.js';
+import {VER,RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,CLS,UNL,UNLD,CAMPS,causeName} from '../core/config.js';
 import {achList,achName,achDesc,achById,award} from '../core/achievements.js';
 import {L,nf,locale} from '../core/i18n.js';
 import {normSeed,dayKey,dailySeed} from '../core/rng.js';
 import {genRoom} from '../core/roomgen.js';
-import {loadScores,lp,loadName,storeName,streak} from '../core/storage.js';
+import {loadScores,lp,loadName,storeName,streak,loadCamp,storeCamp} from '../core/storage.js';
 import {S,setScreen,setSel} from '../core/game.js';
 import {on} from '../core/bus.js';
 import {iconURL,playerSpr} from '../render/sprites.js';
 import {esc} from './esc.js';
 
 const $=id=>document.getElementById(id);
-const TOP_TITLE=()=>L('Bergungseinsatz · Station IKARUS-7','Salvage mission · Station IKARUS-7');
+/* Gewählte Kampagne (0 = Wrack Ikarus, 1 = Tiefenstation Minos) */
+let camp=loadCamp();
+const getCamp=()=>camp;
+function setCamp(c){camp=c===1?1:0;storeCamp(camp);renderCamps();drawPreview();if(S.screen==='title')$('topInfo').textContent=TOP_TITLE()}
+const campTag=s=>s&&s.camp===1?' · Minos':'';
+function renderCamps(){
+  const box=$('camps');box.innerHTML='';
+  CAMPS.forEach((c,i)=>{const b=document.createElement('button');b.className='camp';b.setAttribute('aria-pressed',String(i===camp));
+    b.innerHTML=`<span class="nm">${c.n}</span><span class="ds">${c.d}</span>`;b.onclick=()=>setCamp(i);box.append(b)});
+}
+const TOP_TITLE=()=>camp===1?L('Bergungseinsatz · Tiefenstation Minos','Salvage mission · Deep Station Minos'):L('Bergungseinsatz · Station IKARUS-7','Salvage mission · Station IKARUS-7');
 const TOP_END=()=>L('Einsatzbericht','Mission report');
 /* LP = alle je mit der Klasse gesammelten EP; auf Englisch VP (veteran points) */
 const LP=()=>L('LP','VP');
@@ -44,10 +54,10 @@ function roomBar(e){
   return s+(e.win?' 🚀':'');
 }
 function shareText(e){
-  const cn=CLS[e.cls].n,url=`${__SITE__||location.origin}/#seed-${e.seed}`;
+  const cn=CLS[e.cls].n,url=`${__SITE__||location.origin}/#seed-${e.seed}${e.camp===1?'-k2':''}`;
   const what=e.day?L(`Seed des Tages ${dayLabel(e.day)}`,`Seed of the day ${dayLabel(e.day)}`):`Seed ${e.seed}`;
   const res=e.win?L('entkommen','escaped'):(e.quit?L('abgebrochen','abandoned'):L('gestorben','died'))+L(' in Raum ',' in room ')+e.room+'/'+ROOMS;
-  const lines=[`Wrack Ikarus · ${what} · ${cn}`,`${roomBar(e)} ${nf(e.score)} ${L('Punkte','points')} (${res})`,L('Schlägst du das?','Can you beat that?')];
+  const lines=[`Wrack Ikarus · ${e.camp===1?CAMPS[1].n+' · ':''}${what} · ${cn}`,`${roomBar(e)} ${nf(e.score)} ${L('Punkte','points')} (${res})`,L('Schlägst du das?','Can you beat that?')];
   return{title:'Wrack Ikarus',lines,url,text:lines.join('\n'),full:lines.join('\n')+'\n'+url};
 }
 let share=null;
@@ -83,7 +93,7 @@ function renderScores(el,hl){
   const list=loadScores();el.innerHTML='';
   if(!list.length){const li=document.createElement('li');li.className='none';li.textContent=L('Noch keine Einträge. Dein erster Run setzt die Marke.','No entries yet. Your first run sets the mark.');el.append(li);return}
   list.forEach((s,i)=>{const li=document.createElement('li');if(hl&&s.id===hl)li.className='new';
-    li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span>${CLS[s.cls]?CLS[s.cls].n:esc(s.cls)}</span><span class="sd">${esc(s.seed)}${s.day?` <span class="tag-day">${L('Tag','daily')}</span>`:''}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+(+s.room||'?')}</span>${dateSpan(s.date||s.id)}`;el.append(li)});
+    li.innerHTML=`<span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span>${CLS[s.cls]?CLS[s.cls].n:esc(s.cls)}</span><span class="sd">${esc(s.seed)}${campTag(s)}${s.day?` <span class="tag-day">${L('Tag','daily')}</span>`:''}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+(+s.room||'?')}</span>${dateSpan(s.date||s.id)}`;el.append(li)});
 }
 /* Gemeinsame Bestenliste über /api/scores (nur auf der Vercel-Seite erreichbar) */
 /* Auf Vercel liegt die Bestenliste unter /api; die itch.io-Fassung fragt direkt bei wrack-ikarus.vercel.app an */
@@ -99,7 +109,7 @@ function renderGlobal(el,list,hl,kind){
   if(list==='loading')return note(L('Lade Bestenliste …','Loading leaderboard …'));
   if(list===null)return note(L('Die gemeinsame Bestenliste ist hier gerade nicht erreichbar.','The shared leaderboard can’t be reached from here right now.'));
   if(!list.length)return note(kind==='day'?L('Heute hat sich noch niemand eingetragen. Der erste Platz ist frei.','Nobody has submitted a run today. First place is free.'):L('Noch niemand eingetragen. Der erste Platz ist frei.','Nobody on the board yet. First place is free.'));
-  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span class="nm">${esc(s.name)}${playBtn(s,kind)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
+  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span class="nm">${esc(s.name)}${playBtn(s,kind)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)+campTag(s)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
 }
 /* Knopf „Run ansehen“: nur für Einträge mit Aufzeichnung in der aktuellen Fassung der Spielregeln (ui/watch.js spielt ab) */
 let boardDay='';
@@ -118,7 +128,7 @@ async function sendScore(){
   storeName(name);
   sending=true;$('sendBtn').disabled=true;sendMsg(L('Wird eingetragen …','Submitting …'));
   try{
-    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,seed:e.seed,cls:e.cls,win:e.win,room:e.room,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,day:e.day||undefined,lp0:e.lp0,rec:e.rec||undefined})});
+    const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,seed:e.seed,cls:e.cls,camp:e.camp||0,win:e.win,room:e.room,cleared:e.cleared,rounds:e.rounds,kills:e.kills,lvl:e.lvl,xp:e.xp,day:e.day||undefined,lp0:e.lp0,rec:e.rec||undefined})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok){const x=new Error(serverMsg(j.error)||L('Der Server antwortet nicht','The server is not responding'));x.server=1;throw x}
     e.sent=true;e.gid=j.id;
@@ -139,10 +149,10 @@ function renderEnd(refresh=true){
   $('endEyebrow').textContent=(e.win?L('Rettungskapsel gestartet','Escape pod launched'):e.quit?L('Rückzug angeordnet','Retreat ordered'):L('Signal verloren','Signal lost'))
     +(e.day?' · '+L('Seed des Tages','Seed of the day')+' '+dayLabel(e.day):e.seed===dailySeed(dayKey())?' · '+L('Seed des Tages, weiterer Versuch (außer Wertung für die Tagesliste)','Seed of the day, further attempt (not ranked on today’s board)'):'');
   $('endTitle').textContent=e.win?L('Entkommen','Escaped'):e.quit?L('Abgebrochen in Raum ','Abandoned in room ')+e.room:L('Gefallen in Raum ','Fell in room ')+e.room;
-  $('endText').textContent=e.win?L(`Als ${cn} hast du die Brutmutter getötet und die IKARUS-7 lebend verlassen.`,`As the ${cn} you killed the Brood Mother and left the IKARUS-7 alive.`)
+  $('endText').textContent=e.win?(e.camp===1?L(`Als ${cn} hast du den MINOS-Kern abgeschaltet und die Tiefenstation lebend verlassen.`,`As the ${cn} you shut down the MINOS core and left the deep station alive.`):L(`Als ${cn} hast du die Brutmutter getötet und die IKARUS-7 lebend verlassen.`,`As the ${cn} you killed the Brood Mother and left the IKARUS-7 alive.`))
     :e.quit?L(`Du hast den Einsatz als ${cn} abgebrochen. Abgebrochene Runs kommen nicht in die Bestenliste.`,`You abandoned the mission as the ${cn}. Abandoned runs don’t go on the leaderboard.`)
     :L(`${cause?'Getötet durch: '+cause+'. ':''}Die Bergungsakte für ${cn} wird geschlossen.`,`${cause?'Killed by: '+cause+'. ':''}The salvage file for the ${cn} is closed.`);
-  const items=[[L('Punkte','Score'),nf(e.score),1],[L('Raum','Room'),`${e.room}/${ROOMS}`],[L('Stufe','Level'),e.lvl],[L('Abschüsse','Kills'),e.kills],[L('Runden','Rounds'),e.rounds],['Seed',e.seed]];
+  const items=[[L('Punkte','Score'),nf(e.score),1],[L('Raum','Room'),`${e.room}/${ROOMS}`],[L('Stufe','Level'),e.lvl],[L('Abschüsse','Kills'),e.kills],[L('Runden','Rounds'),e.rounds],['Seed',e.seed],[L('Kampagne','Campaign'),CAMPS[e.camp===1?1:0].n]];
   $('endStats').innerHTML=items.map(([a,b,big])=>`<div${big?' class="big"':''}><dt>${a}</dt><dd>${b}</dd></div>`).join('');
   // Ergebnis zum Teilen: mehrzeilig fürs Teilen-Menü und die Zwischenablage, einzeilig im Textfeld
   const s=shareText(e);share=s;
@@ -166,7 +176,7 @@ function showScreen(s){
   setScreen(s);
   $('scrTitle').hidden=s!=='title';$('scrGame').hidden=s!=='game';$('scrEnd').hidden=s!=='end';
   $('quitBtn').hidden=s!=='game'||!!S.watch;$('quitBtn').textContent=L('Run abbrechen','Abandon run');$('quitBtn').classList.remove('warn');
-  if(s==='title'){shownDay='';award(null);renderAch();renderClasses();renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
+  if(s==='title'){shownDay='';award(null);renderAch();renderCamps();renderClasses();renderScores($('hsTitle'));loadGlobal($('gsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
   if(s==='game')window.scrollTo(0,0);
   if(s==='end'){renderEnd();$('topInfo').textContent=TOP_END();window.scrollTo(0,0)}
 }
@@ -193,7 +203,7 @@ function drawPreview(){
   const x=$('pv').getContext('2d');const s=normSeed($('seedIn').value);
   x.fillStyle='#05070a';x.fillRect(0,0,68,52);
   if(!s){$('pvCap').textContent=L('Gib einen Seed ein oder würfle einen.','Enter a seed or roll one.');return}
-  const d=genRoom(s,1,'','L');
+  const d=genRoom(s,1,'','L',camp);
   for(let i=0;i<RW*RH;i++){const t=d.map[i],px=(i%RW)*4,py=((i/RW)|0)*4;
     x.fillStyle=t===WALL?'#2d3743':t===BLOCK?'#6b5a3a':t===DOOR?'#ffb000':'#1d2631';x.fillRect(px,py,4,4);
     if(t===FLOOR){x.fillStyle='#141b23';x.fillRect(px+3,py,1,4);x.fillRect(px,py+3,4,1)}}
@@ -206,9 +216,9 @@ on('screen',showScreen);
 on('lang',()=>{
   const s=S.screen;
   $('quitBtn').textContent=L('Run abbrechen','Abandon run');$('quitBtn').classList.remove('warn');
-  if(s==='title'){renderAch();renderClasses();renderScores($('hsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
+  if(s==='title'){renderAch();renderCamps();renderClasses();renderScores($('hsTitle'));drawPreview();$('topInfo').textContent=TOP_TITLE()}
   if(s==='end'){renderEnd(false);$('topInfo').textContent=TOP_END()}
   for(const [el,[list,hl,kind]] of lastGlobal)if(!el.closest('[hidden]'))renderGlobal(el,list,hl,kind);
 });
 
-export {showScreen,renderClasses,drawPreview,sendScore,currentShare};
+export {showScreen,renderClasses,drawPreview,sendScore,currentShare,getCamp,setCamp};

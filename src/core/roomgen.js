@@ -1,7 +1,7 @@
 // Raumgenerator: baut aus Seed, Raumnummer und Türweg immer denselben Raum.
 // Aus der klassischen Version übernommen, Inhalt unverändert.
 
-import {RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,POD,D8,OPP,ROOMNAMES,RTABLE,ELITE,SHAPES,ITABLE,EVENTS,EVENT_CHANCE,tierOf,bossRoomName} from './config.js';
+import {RW,RH,ROOMS,WALL,FLOOR,BLOCK,DOOR,POD,D8,OPP,CAMPS,MON,SHAPES,ITABLE,EVENTS,EVENT_CHANCE,tierOf,bossRoomName} from './config.js';
 import {h32,makeRng,wpick} from './rng.js';
 import {canStep} from './geometry.js';
 
@@ -15,8 +15,10 @@ function bfsGrid(map,sx,sy,blocked){
     for(const[dx,dy]of D8){const nx=x+dx,ny=y+dy;if(!canStep(map,x,y,nx,ny))continue;const j=nx+ny*RW;if(d[j]>=0)continue;if(blocked&&blocked(nx,ny))continue;d[j]=d[i]+1;q.push(j)}}
   return d;
 }
-function genRoom(seed,idx,path,entry){
-  const r=makeRng(h32(seed+'#raum'+idx+'#'+path));
+/* camp: Kampagne (0 = Wrack Ikarus, 1 = Tiefenstation Minos). Kampagne 0 erzeugt dieselben Räume wie immer. */
+function genRoom(seed,idx,path,entry,camp){
+  camp=camp===1?1:0;const C=CAMPS[camp];
+  const r=makeRng(h32(seed+'#raum'+idx+'#'+path+(camp?'#k'+camp:'')));
   const rr=(a,b)=>a+Math.floor(r()*(b-a+1));
   const pick=a=>a[Math.floor(r()*a.length)];
   const boss=idx===ROOMS,tier=tierOf(idx);
@@ -63,15 +65,17 @@ function genRoom(seed,idx,path,entry){
   const take=()=>{while(free.length){const i=free.pop();if(!used.has(i)){used.add(i);return{x:i%RW,y:(i/RW)|0}}}return null};
   const mons=[];let elite=false;
   if(boss){
-    const q=toward(opp,3,0);mons.push({t:'queen',x:q.x,y:q.y});used.add(q.x+q.y*RW);
-    [toward(opp,2,-4),toward(opp,2,4)].forEach(t=>{if(map[t.x+t.y*RW]===FLOOR&&!used.has(t.x+t.y*RW)){mons.push({t:'turret',x:t.x,y:t.y});used.add(t.x+t.y*RW)}});
-    for(let k=0;k<2;k++){const p=take();if(p)mons.push({t:'larva',x:p.x,y:p.y})}
+    const B=MON[C.boss],q=toward(opp,3,0);mons.push({t:C.boss,x:q.x,y:q.y});used.add(q.x+q.y*RW);
+    // Wachen neben dem Boss: Geschütztürme bzw. die Schildpylone des Kerns (dort ein dritter vor ihm)
+    const guards=B.guard?[toward(opp,2,-4),toward(opp,2,4),toward(opp,6,0)]:[toward(opp,2,-4),toward(opp,2,4)];
+    guards.forEach(t=>{if(map[t.x+t.y*RW]===FLOOR&&!used.has(t.x+t.y*RW)){mons.push({t:B.guard||'turret',x:t.x,y:t.y});used.add(t.x+t.y*RW)}});
+    for(let k=0;k<2;k++){const p=take();if(p)mons.push({t:B.spawns,x:p.x,y:p.y})}
   }else{
-    const n=tier===1?(idx===1?2:3):tier===2?rr(3,4):rr(4,5);
-    for(let k=0;k<n;k++){const p=take();if(p)mons.push({t:wpick(RTABLE[tier],r),x:p.x,y:p.y})}
-    if(idx>=2&&r()<.25){elite=true;const p=take();if(p)mons.push({t:ELITE[tier],x:p.x,y:p.y,elite:1})}
+    const n=(tier===1?(idx===1?2:3):tier===2?rr(3,4):rr(4,5))+(idx>=2?C.extra:0);
+    for(let k=0;k<n;k++){const p=take();if(p)mons.push({t:wpick(C.rtable[tier],r),x:p.x,y:p.y})}
+    if(idx>=2&&r()<.25){elite=true;const p=take();if(p)mons.push({t:C.elite[tier],x:p.x,y:p.y,elite:1})}
   }
-  const name=boss?bossRoomName():pick(ROOMNAMES[tier]);
+  const name=boss?bossRoomName(camp):pick(C.rooms[tier]);
   // Raum-Ereignis (ab Raum 2, nicht in der Brutkammer). Wird zuletzt gezogen, damit Grundriss und Gegner davon unberührt bleiben.
   let event=null;const items=[];
   if(!boss&&idx>=2&&r()<EVENT_CHANCE){

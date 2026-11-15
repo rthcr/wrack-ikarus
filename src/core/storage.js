@@ -10,7 +10,7 @@ function addLP(cls,x){const a=loadLP();a[cls]=(a[cls]||0)+x;memLP=a;try{localSto
 const lp=cls=>loadLP()[cls]||0;
 
 /* Laufender Run. Eigener Schlüssel, damit sich klassische und neue Version nicht gegenseitig Runs laden. */
-const RKEY='wrack-ikarus-run-v5';
+const RKEY='wrack-ikarus-run-v6';
 function loadRun(){try{return JSON.parse(localStorage.getItem(RKEY)||'null')}catch(e){return null}}
 function storeRun(data){try{if(data)localStorage.setItem(RKEY,JSON.stringify(data));else localStorage.removeItem(RKEY)}catch(e){}}
 const NKEY='wrack-ikarus-name';
@@ -59,4 +59,9 @@ function streak(today){const d=loadDailyState(),live=d.last===today||d.last===pr
 const AKEY='wrack-ikarus-erfolge';let memAch=null;
 function loadAch(){try{const v=JSON.parse(localStorage.getItem(AKEY)||'null');if(v&&typeof v==='object')return{got:{...v.got},wins:{...v.wins}}}catch(e){}return memAch?{got:{...memAch.got},wins:{...memAch.wins}}:{got:{},wins:{}}}
 function storeAch(a){memAch=a;try{localStorage.setItem(AKEY,JSON.stringify(a))}catch(e){}}
+/* Zuletzt gewählte Kampagne (0 oder 1) */
+const CKEY='wrack-ikarus-kampagne';
+function loadCamp(){try{return localStorage.getItem(CKEY)==='1'?1:0}catch(e){return 0}}
+function storeCamp(c){try{localStorage.setItem(CKEY,c===1?'1':'0')}catch(e){}}
+export {loadCamp,storeCamp};
 export {claimDaily,streak,loadAch,storeAch,loadTutorialDone,storeTutorialDone,loadVolumes,storeVolumes,loadMusic,storeMusic,loadFilter,storeFilter,loadLang,storeLang,loadScores,saveScore,loadLP,addLP,lp,loadRun,storeRun,loadName,storeName,loadSound,storeSound};

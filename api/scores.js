@@ -57,7 +57,7 @@ function replay(run) {
   queue = job.catch(() => {});
   return job;
 }
-const SAME = ['seed', 'cls', 'win', 'room', 'cleared', 'rounds', 'kills', 'lvl', 'xp'];
+const SAME = ['seed', 'cls', 'camp', 'win', 'room', 'cleared', 'rounds', 'kills', 'lvl', 'xp'];
 
 // Seed des Tages. Muss mit dailySeed() in src/core/rng.js übereinstimmen.
 const ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -93,9 +93,10 @@ function validate(b) {
   if (b.rounds < b.cleared) return 'Dieser Run ist nicht plausibel.';
   if (b.xp > 120 * b.room + b.rounds) return 'Dieser Run ist nicht plausibel.';
   if (b.kills > 15 * b.room + b.rounds) return 'Dieser Run ist nicht plausibel.';
-  const e = { name, seed, cls: b.cls, win, room: b.room, cleared: b.cleared, rounds: b.rounds, kills: b.kills, lvl: b.lvl, xp: b.xp };
+  const camp = b.camp === 1 ? 1 : 0;   // Kampagne (0 = Wrack Ikarus, 1 = Tiefenstation Minos)
+  const e = { name, seed, cls: b.cls, camp, win, room: b.room, cleared: b.cleared, rounds: b.rounds, kills: b.kills, lvl: b.lvl, xp: b.xp };
   e.score = calcScore(e);
-  e.day = acceptDay(b.day, seed);
+  e.day = camp ? null : acceptDay(b.day, seed);   // Seed des Tages gilt nur in der ersten Kampagne
   return e;
 }
 
@@ -107,7 +108,7 @@ async function topList(board = BOARD, entries = ENTRIES) {
     .map((r) => {
       try {
         const e = JSON.parse(r);
-        return { id: e.id, name: e.name, score: e.score, cls: e.cls, seed: e.seed, room: e.room, win: e.win, rounds: e.rounds, kills: e.kills, lvl: e.lvl, date: e.date, rp: e.rp || 0 };
+        return { id: e.id, name: e.name, score: e.score, cls: e.cls, camp: e.camp || 0, seed: e.seed, room: e.room, win: e.win, rounds: e.rounds, kills: e.kills, lvl: e.lvl, date: e.date, rp: e.rp || 0 };
       } catch (err) {
         return null;
       }
@@ -147,7 +148,7 @@ module.exports = async function handler(req, res) {
         let e = null, r = null;
         try { e = JSON.parse(ent); r = JSON.parse(rec); } catch (err) { e = null; }
         if (!e || !r) { res.status(404).json({ error: 'Zu diesem Eintrag gibt es keine Aufzeichnung.' }); return; }
-        res.status(200).json({ id: e.id, name: e.name, seed: e.seed, cls: e.cls, score: e.score, win: e.win, room: e.room, v: r.v, lp0: r.lp0, day: r.day || null, rec: r.rec });
+        res.status(200).json({ id: e.id, name: e.name, seed: e.seed, cls: e.cls, camp: e.camp || 0, score: e.score, win: e.win, room: e.room, v: r.v, lp0: r.lp0, day: r.day || null, rec: r.rec });
         return;
       }
       if (day) {
@@ -182,7 +183,7 @@ module.exports = async function handler(req, res) {
         return;
       }
       const t0 = Date.now();
-      const r = await replay({ seed: e.seed, cls: e.cls, lp0: body.lp0, day: isDayFormat(body.day) ? body.day : null, rec: body.rec });
+      const r = await replay({ seed: e.seed, cls: e.cls, camp: e.camp, lp0: body.lp0, day: isDayFormat(body.day) ? body.day : null, rec: body.rec });
       const diff = r.ok ? SAME.filter((k) => r.entry[k] !== e[k]) : [];
       if (!r.ok || diff.length) {
         console.warn('Run abgelehnt', e.seed, e.cls, r.ok ? diff.map((k) => `${k}: ${e[k]} ≠ ${r.entry[k]}`).join(', ') : r.reason, `${Date.now() - t0} ms`);

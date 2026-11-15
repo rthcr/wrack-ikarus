@@ -1,6 +1,7 @@
 # Wrack Ikarus
 
-Sci-Fi-Roguelike im Browser (Deutsch und Englisch, Umschalter oben rechts). Rundenbasiert: 8 Kampfräume, dann die Brutkammer mit Boss.
+Sci-Fi-Roguelike im Browser (Deutsch und Englisch, Umschalter oben rechts). Rundenbasiert: 8 Kampfräume, dann der Bossraum.
+Zwei Kampagnen: Wrack Ikarus (Brutmutter) und Tiefenstation Minos (MINOS-Kern).
 Live auf Vercel, Code auf GitHub (`rthcr/wrack-ikarus`). Sprache in Code-Kommentaren, Texten und Commits: Deutsch.
 
 ## Befehle
@@ -83,6 +84,13 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Tutorial:** `startTutorial()` in game.js baut einen festen Übungsraum (`G.tut`): keine Aufzeichnung, keine LP, kein Eintrag,
   kein gespeicherter Stand; durch die Tür oder Abbruch geht es zurück zum Start (Ereignis `tutorial`). Schritte in `ui/tutorial.js`
   beobachten nur den Zustand. Ändert sich der Raum (`TUT` in game.js), die Schritt-Texte dort prüfen.
+- **Kampagnen:** zwei, in `CAMPS` (config.js): 0 = Wrack Ikarus (Brutmutter), 1 = Tiefenstation Minos (MINOS-Kern hinter Schildpylonen).
+  Jede hat eigene Decknamen, Raumnamen, Gegnermischung (`rtable`, `elite`), Endgegner (`boss`) und Zusatzgegner (`extra`).
+  `G.camp` legt sie fest; `genRoom(seed,idx,path,entry,camp)` erzeugt die Räume. **Kampagne 0 muss dieselben Räume liefern wie bisher**
+  (alte Seeds, Seed des Tages). Der Seed des Tages gilt nur in Kampagne 0. Texte je Kampagne: `CT` in game.js; Böden je Kampagne: `FLOORS`
+  in tiles.js (Index Kampagne×4 + Deck). Bestenliste gemeinsam, Einträge tragen `camp`. Link `#seed-XXXX-k2` öffnet Kampagne 2.
+  Boss-Merkmale in `MON`: `rdmg`/`rcd` (Fernangriff), `spawns`, `guard` (halber Schaden, solange diese Gegner leben), `hard` (kein EMP-Schaden),
+  `passive` (tut nichts). Neue Kampagne = Eintrag in `CAMPS` + `EN.CAMPS`, `CT`, `FLOORS`, Sprites, `MONINFO`, `camp`-Prüfung in `api/scores.js`.
 - **Klassen:** vier (`marine`, `tech`, `scout`, `eng`) in `CLS` (config.js). Eine neue Klasse braucht außerdem: `UNLD`, `CLASS_PATCH` (art.js),
   Zweig in `ability()` und `startPerk` (game.js), `CLASSES` in `api/scores.js`, die Klassenlisten in `scripts/parity-check.mjs` und `replay-check.mjs`.
 - **Geschütz und Minen:** `G.sentry` (`{x,y,ttl}`, blockiert sein Feld, schießt in `sentryTurn()` am Anfang des Gegnerzugs) und `G.mines`
@@ -110,7 +118,7 @@ scripts/              Test-Bot (bot.mjs) und npm run check (parity-check.mjs)
 - **Gespeicherter Run:** `validRun()` in game.js prüft ihn vor dem Laden vollständig; ein ungültiger wird verworfen.
   Neue Felder in `G` dort mit aufnehmen. Text aus Browserspeicher oder Server nur über `esc()` (ui/esc.js) in HTML einsetzen.
 - **Speicherschlüssel:** Bestenliste und LP teilen sich die Schlüssel mit der klassischen Fassung (Fortschritt gilt in beiden).
-  Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v5`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
+  Der laufende Run hat einen eigenen Schlüssel (`wrack-ikarus-run-v6`). Ändert sich die Form von `G` inkompatibel, Schlüssel hochzählen.
 - Nach Logikänderungen `npm run check` laufen lassen.
 - Grafik: Kacheln sind 16×16 (`TS`), die Welt 272×208 Pixel, Phaser skaliert mit `pixelArt: true`.
   Neue Figuren in `art.js`: genau 16 Zeilen à 16 Zeichen, nur Farbzeichen aus `PAL` (plus h/H bzw. x/X zum Umfärben).

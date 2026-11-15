@@ -4,7 +4,7 @@
 // Hier aber mit echten Wartezeiten und sichtbar. Der Browserspeicher bleibt unberührt (watch in game.js).
 import {S,ACTIONS,timing,startRun,restore,runHash,setWatch,abortRun,watchAutoEnd} from '../core/game.js';
 import {checkRec} from '../core/replay.js';
-import {CLS,ROOMS,VER} from '../core/config.js';
+import {CLS,ROOMS,VER,CAMPS} from '../core/config.js';
 import {L,nf} from '../core/i18n.js';
 import {on} from '../core/bus.js';
 import {unlock} from '../audio/sfx.js';
@@ -20,7 +20,7 @@ let W=null;   // {run, w, i, timer, next, since, back, state:'play'|'end'|'bad',
 
 function label(){
   if(!W)return;const r=W.run,cn=CLS[r.cls].n;
-  const who=(r.name?r.name+' · ':'')+cn+' · Seed '+r.seed;
+  const who=(r.name?r.name+' · ':'')+cn+(r.camp===1?' · '+CAMPS[1].n:'')+' · Seed '+r.seed;
   $('watchStep').textContent=W.state==='end'?L('Wiederholung beendet','Replay finished'):W.state==='bad'?L('Wiederholung abgebrochen','Replay stopped'):L('Wiederholung','Replay');
   const e=W.entry;
   $('watchTitle').textContent=W.state==='bad'?L('Diese Aufzeichnung passt nicht mehr zur aktuellen Fassung des Spiels.','This recording no longer matches the current version of the game.')
@@ -42,7 +42,8 @@ function startWatch(run){
   setWatch(w);
   W={run:{...run,name:typeof run.name==='string'?run.name.slice(0,16):''},w,i:0,speed:1,state:'play',entry:null,back,next:performance.now()+700,since:performance.now(),sent:performance.now(),hashed:new Map()};
   timing.scale=1;
-  startRun(run.seed,run.cls,{day:run.day||null});
+  const camp=run.camp===1?1:0;
+  startRun(run.seed,run.cls,{day:camp?null:run.day||null,camp});
   $('watchBox').hidden=false;$('scrGame').classList.add('watching');$('quitBtn').hidden=true;
   label();
   W.timer=setInterval(tick,30);
@@ -104,6 +105,6 @@ document.addEventListener('click',async ev=>{
   }catch(e){fail()}
 });
 /* Eigener letzter Run (Endbildschirm) */
-$('watchBtn').onclick=()=>{const e=S.lastEntry;if(e&&e.rec&&!e.quit)startWatch({seed:e.seed,cls:e.cls,lp0:e.lp0,day:e.day,rec:e.rec.map(x=>x.slice()),name:''})};
+$('watchBtn').onclick=()=>{const e=S.lastEntry;if(e&&e.rec&&!e.quit)startWatch({seed:e.seed,cls:e.cls,camp:e.camp,lp0:e.lp0,day:e.day,rec:e.rec.map(x=>x.slice()),name:''})};
 
 export {startWatch,stopWatch};

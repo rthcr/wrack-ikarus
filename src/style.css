@@ -364,3 +364,12 @@ p{margin:0}
 .watch-ctl #watchStop{margin-left:auto}
 .watching .actions,.watching .touch,.watching #endBtn,.watching .inv{pointer-events:none;opacity:.5}
 .hs.day .sd{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Kampagnenwahl */
+.camps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (max-width:620px){.camps{grid-template-columns:minmax(0,1fr)}}
+.camp{display:grid;gap:4px;text-align:left;background:var(--panel2);border:1px solid var(--line);padding:10px 12px;border-radius:2px;cursor:pointer;color:var(--dim)}
+.camp .nm{font-family:var(--f-display);font-size:13px;letter-spacing:.05em;color:var(--text)}
+.camp .ds{font-size:12px;line-height:1.4}
+.camp[aria-pressed="true"]{border-color:var(--amber);background:#1b1708}
+.camp[aria-pressed="true"] .nm{color:var(--amber)}

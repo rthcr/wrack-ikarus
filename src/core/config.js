@@ -5,7 +5,7 @@ import {L,localize} from './i18n.js';
 const RW=17,RH=13,T=8,ROOMS=9,INV=6;
 /* Fassung der Spielregeln. Hochzählen, sobald sich der Spielablauf ändert (Regeln, Werte, Raumgenerator):
    Gespeicherte Wiederholungen älterer Fassungen lassen sich dann nicht mehr abspielen und werden nicht mehr angeboten. */
-const VER=5;
+const VER=6;
 const WALL=0,FLOOR=1,BLOCK=2,DOOR=3,EXIT=4,POD=5;
 const D8=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 const OPP={L:'R',R:'L',T:'B',B:'T'};
@@ -41,10 +41,29 @@ const MON={
  walker:{nom:'Der Panzerläufer',acc:'den Panzerläufer',n:'Panzerläufer',hp:22,atk:7,def:3,mp:2,xp:12,robot:1},
  spitter:{nom:'Der Säurespucker',acc:'den Säurespucker',n:'Säurespucker',hp:8,atk:3,def:0,mp:3,xp:6,range:4,acid:1},
  breaker:{nom:'Der Brecher',acc:'den Brecher',n:'Brecher',hp:16,atk:5,def:2,mp:2,xp:8,smash:1},
- queen:{nom:'Die Brutmutter',acc:'die Brutmutter',n:'Brutmutter',hp:70,atk:8,def:3,mp:2,xp:60,boss:1,range:5}
+ queen:{nom:'Die Brutmutter',acc:'die Brutmutter',n:'Brutmutter',hp:70,atk:8,def:3,mp:2,xp:60,boss:1,range:5,rdmg:6,rcd:2,spawns:'larva'},
+ /* Kampagne 2 (Tiefenstation Minos): Maschinen. passive = tut nichts, guard = halber Schaden, solange einer dieser Gegner lebt,
+    hard = gegen EMP gehärtet (kein EMP-Schaden),
+    rdmg = Schaden des Boss-Fernangriffs, rcd = alle wie viele Runden er feuert, spawns = was der Boss alle 3 Runden ausstößt */
+ swarm:{nom:'Die Schwarmdrohne',acc:'die Schwarmdrohne',n:'Schwarmdrohne',hp:3,atk:2,def:0,mp:5,xp:2,robot:1},
+ welder:{nom:'Der Schweißroboter',acc:'den Schweißroboter',n:'Schweißroboter',hp:12,atk:5,def:2,mp:2,xp:6,robot:1},
+ sniper:{nom:'Der Laserwächter',acc:'den Laserwächter',n:'Laserwächter',hp:8,atk:5,def:1,mp:2,xp:7,robot:1,range:7},
+ pylon:{nom:'Der Schildpylon',acc:'den Schildpylon',n:'Schildpylon',hp:10,atk:0,def:1,mp:0,xp:4,robot:1,passive:1},
+ core:{nom:'Der MINOS-Kern',acc:'den MINOS-Kern',n:'MINOS-Kern',hp:70,atk:0,def:3,mp:0,xp:70,boss:1,robot:1,hard:1,range:9,nomelee:1,rdmg:9,rcd:1,spawns:'swarm',guard:'pylon'}
 };
 const RTABLE={1:{larva:5,drone:4,mutant:1,spitter:1},2:{larva:2,drone:3,mutant:4,turret:2,hunter:1,spitter:2,breaker:2},3:{mutant:3,turret:2,hunter:3,walker:2,drone:1,spitter:1,breaker:2}};
 const ELITE={1:'mutant',2:'hunter',3:'walker'};
+/* Kampagnen: eigene Decks, Raumnamen, Gegnermischung und Endgegner. extra = zusätzliche Gegner je Raum (ab Raum 2).
+   Kampagne 0 muss unverändert bleiben (Seed des Tages, alte Seeds). */
+const CAMPS=[
+ {key:'ikarus',n:'Wrack Ikarus',d:'Forschungsstation im Orbit: Kreaturen und durchgedrehte Maschinen. Am Ende wartet die Brutmutter.',
+  tiers:TIERNAME,rooms:ROOMNAMES,rtable:RTABLE,elite:ELITE,boss:'queen',bossRoom:'Brutkammer',extra:0},
+ {key:'minos',n:'Tiefenstation Minos',d:'Bergwerk unter dem Eis: Die Stations-KI hat jede Maschine übernommen. Am Ende wartet ihr Kern hinter Schildpylonen. Schwerer.',
+  tiers:['Förderdeck','Schmelzwerk','Rechenkern','Kernkammer'],
+  rooms:{1:['Landebucht','Erzsilo','Förderband','Sortierhalle','Bohrkopflager'],2:['Schmelzofen','Gießhalle','Schlackegrube','Walzstraße','Kühlbecken','Leitstand'],3:['Serverhalle','Datenarchiv','Kühlschacht','Sicherungsraum','Relaisstation']},
+  rtable:{1:{swarm:5,drone:4,welder:2,turret:1},2:{swarm:3,drone:2,welder:4,turret:2,sniper:2,breaker:1},3:{welder:3,sniper:3,walker:3,turret:2,swarm:2}},
+  elite:{1:'welder',2:'sniper',3:'walker'},boss:'core',bossRoom:'Kernkammer',extra:1}];
+const campOf=g=>CAMPS[g&&g.camp===1?1:0];
 
 const IT={
  med:{n:'Medi-Injektor',d:'heilt 12 TP'},
@@ -97,7 +116,12 @@ const EN={
   walker:{nom:'The armored walker',acc:'the armored walker',n:'Armored Walker'},
   spitter:{nom:'The acid spitter',acc:'the acid spitter',n:'Acid Spitter'},
   breaker:{nom:'The breaker',acc:'the breaker',n:'Breaker'},
-  queen:{nom:'The Brood Mother',acc:'the Brood Mother',n:'Brood Mother'}},
+  queen:{nom:'The Brood Mother',acc:'the Brood Mother',n:'Brood Mother'},
+  swarm:{nom:'The swarm drone',acc:'the swarm drone',n:'Swarm Drone'},
+  welder:{nom:'The welding robot',acc:'the welding robot',n:'Welding Robot'},
+  sniper:{nom:'The laser sentinel',acc:'the laser sentinel',n:'Laser Sentinel'},
+  pylon:{nom:'The shield pylon',acc:'the shield pylon',n:'Shield Pylon'},
+  core:{nom:'The MINOS core',acc:'the MINOS core',n:'MINOS Core'}},
  IT:{
   med:{n:'Med Injector',d:'heals 12 HP'},cell:{n:'Energy Cell',d:'+4 ammo'},nade:{n:'Frag Grenade',d:'pick a target: 8 damage in a 3×3 area'},
   stim:{n:'Combat Stim',d:'+3 attack for 3 rounds'},scan:{n:'Motion Tracker',d:'shows where every enemy in the room is'},phase:{n:'Phase Capsule',d:'teleports you away from the enemies'},
@@ -105,13 +129,23 @@ const EN={
   wrench:{n:'Pipe Wrench'},blade:{n:'Vibro Blade'},cutter:{n:'Plasma Cutter'},vest:{n:'Protective Vest'},suit:{n:'Combat Suit'},exo:{n:'Exo Armor'}},
 };
 /* Raumnamen sprachunabhängig: Im Run steht der Name, mit dem der Raum erzeugt wurde (Deutsch oder Englisch). */
-const ROOM_DE=Object.fromEntries(Object.entries(ROOMNAMES).map(([k,a])=>[k,a.slice()])),BOSS_ROOM={de:'Brutkammer',en:'Brood Chamber'};
+EN.CAMPS=[
+ {n:'Wreck Ikarus',d:'Research station in orbit: creatures and rogue machines. The Brood Mother waits at the end.',bossRoom:'Brood Chamber'},
+ {n:'Deep Station Minos',d:'A mine under the ice: the station AI has taken over every machine. Its core waits at the end behind shield pylons. Harder.',
+  tiers:['Haulage Deck','Smelting Works','Computing Core','Core Chamber'],
+  rooms:{1:['Landing Bay','Ore Silo','Conveyor Line','Sorting Hall','Drill Head Store'],2:['Smelting Furnace','Casting Hall','Slag Pit','Rolling Mill','Cooling Basin','Control Stand'],3:['Server Hall','Data Archive','Cooling Shaft','Backup Room','Relay Station']}}];
+/* Deutsche Raumnamen aller Kampagnen merken, bevor localize() sie durch sprachabhängige Getter ersetzt */
+const ROOM_DE=CAMPS.map(c=>({boss:c.bossRoom,rooms:Object.fromEntries(Object.entries(c.rooms).map(([k,a])=>[k,a.slice()]))}));
+const ROOM_EN=[{boss:EN.CAMPS[0].bossRoom,rooms:EN.ROOMNAMES},{boss:EN.CAMPS[1].bossRoom,rooms:EN.CAMPS[1].rooms}];
 function roomTitle(name){
-  if(name===BOSS_ROOM.de||name===BOSS_ROOM.en)return L(BOSS_ROOM.de,BOSS_ROOM.en);
-  for(const t in ROOM_DE){let i=ROOM_DE[t].indexOf(name);if(i<0)i=EN.ROOMNAMES[t].indexOf(name);if(i>=0)return L(ROOM_DE[t][i],EN.ROOMNAMES[t][i])}
+  for(let c=0;c<ROOM_DE.length;c++){
+    const de=ROOM_DE[c],en=ROOM_EN[c];
+    if(name===de.boss||name===en.boss)return L(de.boss,en.boss);
+    for(const t in de.rooms){let i=de.rooms[t].indexOf(name);if(i<0)i=en.rooms[t].indexOf(name);if(i>=0)return L(de.rooms[t][i],en.rooms[t][i])}
+  }
   return name;
 }
-const bossRoomName=()=>L(BOSS_ROOM.de,BOSS_ROOM.en);
+const bossRoomName=camp=>CAMPS[camp===1?1:0].bossRoom;
 /* Todesursache: gespeichert als Gegner-Schlüssel bzw. 'nade'; ältere Einträge enthalten noch deutschen Text */
 function causeName(c){
   if(MON[c])return MON[c].nom;
@@ -119,7 +153,8 @@ function causeName(c){
   return c||'';
 }
 EN.EVENTS={dark:{n:'Power Outage',d:'You and the enemies only see 4 tiles far.'},coolant:{n:'Coolant Leak',d:'Slippery floor: everyone moves 1 tile less per round.'},cache:{n:'Supply Room',d:'Extra equipment lies here.'},alarm:{n:'Alarm',d:'The enemies know where you are from the start.'}};
-localize({TIERNAME,ROOMNAMES,CLS,UNLD,AB2,MON,IT,EVENTS},EN);
+localize({TIERNAME,ROOMNAMES,CLS,UNLD,AB2,MON,IT,EVENTS,CAMPS},EN);
 
 export {roomTitle,bossRoomName,causeName};
+export {CAMPS,campOf};
 export {VER,RW,RH,T,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,TIERNAME,ROOMNAMES,FLOORTINT,ALPH,tierOf,CLS,UNL,UNLD,AB2,MON,RTABLE,ELITE,IT,ITABLE,SHAPES,EVENTS,EVENT_CHANCE,DARK_SIGHT};

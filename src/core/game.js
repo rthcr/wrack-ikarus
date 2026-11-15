@@ -1,7 +1,7 @@
 // Spiellogik von Wrack Ikarus: Regeln, Runden, Kampf, Items, Gegner-KI.
 // Kein DOM, keine Grafik: Alles, was sichtbar oder hörbar wird, geht als Ereignis über den Bus.
 // Der Regelcode ist aus der klassischen Version übernommen und dort Zeile für Zeile gleich.
-import {RW,RH,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,MON,IT,ITABLE,EVENTS,DARK_SIGHT,tierOf} from './config.js';
+import {RW,RH,ROOMS,INV,WALL,FLOOR,BLOCK,DOOR,EXIT,POD,D8,OPP,CLS,UNL,UNLD,AB2,MON,IT,ITABLE,EVENTS,DARK_SIGHT,CAMPS,tierOf} from './config.js';
 import {h32,wpick,dailyDay} from './rng.js';
 import {solidT,cheb,losMap,canStep} from './geometry.js';
 import {sideTile,genRoom} from './roomgen.js';
@@ -28,6 +28,20 @@ const firstDaily=seed=>{const d=dailyDay(seed);return d&&claimDaily(d)?d:null};
 /* Zähler für die Erfolge: Schüsse, benutzte Items, Schaden im aktuellen Raum, Räume ohne Schaden, Boss ohne Schaden,
    Abschüsse durch Mine und Geschütz */
 const newStats=()=>({shots:0,used:0,dmg:0,clean:0,boss:0,mineK:0,sentryK:0});
+
+/* Texte, die von der Kampagne abhängen (0 = Wrack Ikarus, 1 = Tiefenstation Minos) */
+const CT={
+  intro:[()=>L('Andockschleuse offen. Die Luft riecht nach Ozon und etwas Süßlichem.','Docking airlock open. The air smells of ozone and something sweet.'),
+         ()=>L('Der Förderkorb setzt auf. Irgendwo tief unten summt etwas, das nicht mehr auf Befehle hört.','The hoist cage touches down. Somewhere deep below, something hums that no longer takes orders.')],
+  bossEnter:[()=>L('Die Wände sind mit Harz überzogen. Etwas Großes atmet.','The walls are coated in resin. Something big is breathing.'),
+             ()=>L('Reihen von Rechnerschränken. In der Mitte glüht der Kern, drei Pylone halten seinen Schild.','Rows of server racks. The core glows in the middle, three pylons hold its shield.')],
+  bossDead:[()=>L('Die Brutmutter bricht zusammen.','The Brood Mother collapses.'),()=>L('Der MINOS-Kern erlischt. Überall in der Station bleiben Maschinen stehen.','The MINOS core goes dark. All over the station machines grind to a halt.')],
+  podLocked:[()=>L('Die Kapsel ist verriegelt, solange die Brutmutter lebt.','The pod stays locked while the Brood Mother lives.'),()=>L('Die Kapsel ist verriegelt, solange der Kern läuft.','The pod stays locked while the core is running.')],
+  lastDoor:[()=>L('Eine schwere Schleuse öffnet sich. Dahinter: die Brutkammer.','A heavy airlock opens. Behind it: the brood chamber.'),()=>L('Ein Panzerschott fährt auf. Dahinter: die Kernkammer.','A blast door slides open. Behind it: the core chamber.')],
+  win:[()=>L('Kapsel abgekoppelt. Die IKARUS-7 schrumpft hinter dir zu einem Punkt.','Pod undocked. The IKARUS-7 shrinks to a dot behind you.'),()=>L('Kapsel gestartet. Der Schacht rast vorbei, dann Eis, dann Sterne.','Pod launched. The shaft rushes past, then ice, then stars.')],
+  spawn:[()=>L('Die Brutmutter stößt eine Larve aus.','The Brood Mother expels a larva.'),()=>L('Der Kern startet eine Schwarmdrohne.','The core launches a swarm drone.')],
+};
+const ct=k=>CT[k][G.camp===1?1:0]();
 
 /* Brücken zur Darstellung */
 const fx={push:o=>emit('fx',o)};
@@ -87,12 +101,13 @@ function newMon(t,x,y,elite){const d=MON[t];const hp=elite?Math.round(d.hp*1.6):
 /* opts.day: nur beim Nachspielen auf dem Server (dort gilt das Datum des Originals, nicht das heutige) */
 function startRun(seed,cls,opts){
   const c=CLS[cls];
-  G={seed,cls,day:opts&&'day' in opts?opts.day:firstDaily(seed),lp0:lp(cls),st:newStats(),rec:[],medArm:null,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
+  const camp=opts&&opts.camp===1?1:0;   // Kampagne; der Seed des Tages gilt nur für Kampagne 0
+  G={seed,cls,camp,day:opts&&'day' in opts?opts.day:camp?null:firstDaily(seed),lp0:lp(cls),st:newStats(),rec:[],medArm:null,room:0,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32(seed+'!kampf'),nid:1,cause:'',
      map:[],deco:[],mons:[],items:[],exits:[],entry:'L',name:'',elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,event:null,mines:[],sentry:null,
      p:{x:0,y:0,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   if(unl(0))startPerk();
   finishing=false;busy=false;pendingEnd=false;hover=null;emit('reset');   // main.js schreibt dabei den Seed in die Adresszeile
-  log(L('Andockschleuse offen. Die Luft riecht nach Ozon und etwas Süßlichem.','Docking airlock open. The air smells of ozone and something sweet.'),'warn');
+  log(ct('intro'),'warn');
   showScreen('game');
   enterRoom(1,'L');
 }
@@ -103,7 +118,7 @@ function startRun(seed,cls,opts){
 const TUT={start:{x:2,y:6},cell:{x:4,y:8},crates:[[7,3],[7,4],[7,5],[7,6],[7,7],[7,8],[7,9],[8,3],[8,9]],drone:{x:11,y:6},exit:{side:'R',pos:6}};
 function startTutorial(){
   const cls='marine',c=CLS[cls];
-  G={seed:'TUTORIAL',cls,tut:true,day:null,lp0:0,st:newStats(),rec:null,medArm:null,room:1,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32('TUTORIAL!kampf'),nid:1,cause:'',
+  G={seed:'TUTORIAL',cls,camp:0,tut:true,day:null,lp0:0,st:newStats(),rec:null,medArm:null,room:1,path:'',round:0,rounds:0,phase:'player',kills:0,xpTotal:0,cleared:0,alive:true,over:false,win:false,log:[],rs:h32('TUTORIAL!kampf'),nid:1,cause:'',
      map:[],deco:[],mons:[],items:[],exits:[TUT.exit],entry:'L',name:L('Übungsraum','Training room'),elite:false,boss:false,bossDead:false,pod:null,target:null,active:null,event:null,mines:[],sentry:null,
      p:{x:TUT.start.x,y:TUT.start.y,hp:c.hp,max:c.hp,atk:c.atk,def:c.def,lvl:1,xp:0,ammo:c.ammo,wpn:null,arm:null,inv:c.inv.slice(),cd:0,cd2:0,shield:0,dodge:0,cdr:0,invis:0,stim:0,mp:c.mp,act:1},offer:null,picks:0};
   for(let y=0;y<RH;y++)for(let x=0;x<RW;x++){G.map.push(x===0||y===0||x===RW-1||y===RH-1?WALL:FLOOR);G.deco.push(((x*7+y*13)%10)/10)}
@@ -122,13 +137,13 @@ function endTutorial(done){
 }
 
 function enterRoom(idx,entry){
-  const d=genRoom(G.seed,idx,G.path,entry);
+  const d=genRoom(G.seed,idx,G.path,entry,G.camp);
   Object.assign(G,{room:idx,map:d.map,deco:d.deco,items:d.items||[],exits:d.exits,entry,name:d.name,elite:d.elite,boss:d.boss,bossDead:false,pod:d.pod,round:0,target:null,active:null,event:d.event||null,mines:[],sentry:null});
   G.mons=d.mons.map(m=>newMon(m.t,m.x,m.y,m.elite));G.st.dmg=0;
   G.p.x=d.start.x;G.p.y=d.start.y;
   if(G.event==='alarm')G.mons.forEach(m=>{m.aware=true;m.known={x:G.p.x,y:G.p.y}});
   log(L(`Raum ${idx}/${ROOMS}: ${d.name}. Die Tür hinter dir verriegelt.`,`Room ${idx}/${ROOMS}: ${d.name}. The door locks behind you.`),'info');
-  if(d.boss)log(L('Die Wände sind mit Harz überzogen. Etwas Großes atmet.','The walls are coated in resin. Something big is breathing.'),'warn');
+  if(d.boss)log(ct('bossEnter'),'warn');
   else if(d.elite)log(L('Schwere Schritte irgendwo hinter der Deckung.','Heavy footsteps somewhere behind the cover.'),'warn');
   if(G.event)log(`${EVENTS[G.event].n}: ${EVENTS[G.event].d}`,'warn');
   startRound();
@@ -208,14 +223,18 @@ function pathTo(i){const out=[];let c=i;while(c>=0&&c!==G.p.x+G.p.y*RW){out.push
 
 /* ---------- Kampf ---------- */
 /* src: Zähler für den Abschuss ('mineK', 'sentryK'), sonst leer */
+/* Schild: Der MINOS-Kern nimmt nur halben Schaden, solange ein Schildpylon steht */
+const guarded=m=>{const g=MON[m.t].guard;return !!g&&G.mons.some(o=>o.hp>0&&o.t===g)};
 function hitMon(m,dmg,src){
+  if(guarded(m)){dmg=Math.ceil(dmg/2);log(L(`Der Schild schluckt die Hälfte: Nur ${dmg} Schaden kommen an. Zerstör die Pylone!`,`The shield swallows half: only ${dmg} damage gets through. Destroy the pylons!`),'warn')}
   m.hp-=dmg;m.aware=true;m.known={x:G.p.x,y:G.p.y};
   fx.push({type:'flash',x:m.x,y:m.y,t0:performance.now(),dur:180});
   if(m.hp<=0){if(src)G.st[src]++;killMon(m)}
 }
 function killMon(m){
   const d=MON[m.t];G.kills++;log(L(`${d.nom} ist erledigt.`,`${d.nom} is down.`),'good');SFX.kill();gainXp(d.xp*(m.elite?2:1));
-  if(d.boss){G.bossDead=true;log(L('Die Brutmutter bricht zusammen.','The Brood Mother collapses.'),'good')}
+  if(d.boss){G.bossDead=true;log(ct('bossDead'),'good')}
+  if(d.passive&&MON[CAMPS[G.camp].boss].guard===m.t&&!G.mons.some(o=>o!==m&&o.hp>0&&o.t===m.t))log(L('Der letzte Pylon fällt. Der Schild des Kerns bricht zusammen.','The last pylon falls. The core’s shield collapses.'),'good');
   dropLoot(m,d);
 }
 /* Beute: Larven selten, normale Gegner oft, Elite und Boss immer. Maschinen lassen oft Energiezellen fallen. */
@@ -313,7 +332,7 @@ function ability(){
     if(!vis.length){log(L('Kein Gegner in Sicht.','No enemy in sight.'),'dim');updateUI();return}
     useAction();log(L('EMP-Impuls! Alles in Sicht erstarrt.','EMP pulse! Everything in sight freezes.'),'info');SFX.emp();
     fx.push({type:'ring',x:p.x,y:p.y,t0:performance.now(),dur:450});
-    vis.forEach(m=>{const d=MON[m.t];m.stun=Math.max(m.stun,d.boss?1:unl(1)?3:2);if(d.robot)hitMon(m,6)});
+    vis.forEach(m=>{const d=MON[m.t];m.stun=Math.max(m.stun,d.boss?1:unl(1)?3:2);if(d.robot&&!d.hard)hitMon(m,6)});
   }else if(G.cls==='eng'){
     // Geschütz auf ein freies Nachbarfeld: möglichst nah am nächsten sichtbaren Gegner, sonst das erste freie
     const near=G.mons.filter(m=>m.hp>0&&VIS[m.x+m.y*RW]).sort((a,b)=>cheb(a,p)-cheb(b,p)||a.id-b.id)[0];
@@ -471,7 +490,7 @@ function tileClick(tx,ty){
     if(i===p.x+p.y*RW){goThrough(tx,ty);return}
     if(REACH[i]<0)return;walk(pathTo(i),()=>goThrough(tx,ty));return;
   }
-  if(t===POD&&!G.bossDead){log(L('Die Kapsel ist verriegelt, solange die Brutmutter lebt.','The pod stays locked while the Brood Mother lives.'),'warn');updateUI();return}
+  if(t===POD&&!G.bossDead){log(ct('podLocked'),'warn');updateUI();return}
   if(t===DOOR){log(G.phase==='explore'?L('Diese Tür bleibt verriegelt.','This door stays locked.'):L('Verriegelt. Erst muss der Raum sauber sein.','Locked. Clear the room first.'),'dim');updateUI();return}
   const i=tx+ty*RW;
   if(i===p.x+p.y*RW){if(itemAt(tx,ty))pickupHere();return}
@@ -487,18 +506,18 @@ function checkClear(){
   const heal=Math.min(3,p.max-p.hp);p.hp+=heal;
   // Türen öffnen. Die Anzeige an jeder Tür verrät, was dahinter wartet (der nächste Raum steht durch Seed und Weg schon fest).
   G.exits.forEach(e=>{const t=sideTile(e.side,e.pos);G.map[t.x+t.y*RW]=EXIT;
-    if(!G.tut){const d=genRoom(G.seed,G.room+1,G.path+e.side+e.pos+'.',OPP[e.side]);e.hint={n:d.mons.length,elite:d.elite?1:0,event:d.event||null,boss:d.boss?1:0}}});
+    if(!G.tut){const d=genRoom(G.seed,G.room+1,G.path+e.side+e.pos+'.',OPP[e.side],G.camp);e.hint={n:d.mons.length,elite:d.elite?1:0,event:d.event||null,boss:d.boss?1:0}}});
   if(G.boss){log(L('Raum gesichert. Die Rettungskapsel ist entriegelt. Steig ein!','Room secured. The escape pod is unlocked. Get in!'),'good');banner(L('Kapsel entriegelt','Pod unlocked'),'good');SFX.win()}
   else{log(L(`Raum gesichert in ${rounds_(G.round)}.${heal?` Atempause: +${heal} TP.`:''}${G.items.length?' Vergiss die Beute nicht.':''}`,
              `Room secured in ${rounds_(G.round)}.${heal?` Breather: +${heal} HP.`:''}${G.items.length?' Don’t forget the loot.':''}`),'good');
     log(G.exits.length>1?L(`${G.exits.length} Türen öffnen sich. Die Anzeige an jeder Tür verrät, was dahinter wartet.`,`${G.exits.length} doors open. The display on each door tells you what waits behind it.`)
-      :L('Eine schwere Schleuse öffnet sich. Dahinter: die Brutkammer.','A heavy airlock opens. Behind it: the brood chamber.'),'info');
+      :ct('lastDoor'),'info');
     banner(L('Raum gesichert','Room secured'),'good');SFX.lvl()}
   computeVis();
 }
 function goThrough(x,y){
   const t=G.map[x+y*RW];
-  if(t===POD){G.p.x=x;G.p.y=y;G.win=true;log(L('Kapsel abgekoppelt. Die IKARUS-7 schrumpft hinter dir zu einem Punkt.','Pod undocked. The IKARUS-7 shrinks to a dot behind you.'),'good');SFX.win();finish();return}
+  if(t===POD){G.p.x=x;G.p.y=y;G.win=true;log(ct('win'),'good');SFX.win();finish();return}
   const e=G.exits.find(e=>{const s=sideTile(e.side,e.pos);return s.x===x&&s.y===y});if(!e)return;
   if(G.tut){SFX.lift();endTutorial(true);return}
   G.path+=e.side+e.pos+'.';SFX.lift();
@@ -518,25 +537,26 @@ async function monTurn(m){
   const d=MON[m.t],p=G.p,run=G,gone=()=>G!==run;
   const shown=()=>VIS[m.x+m.y*RW];
   if(m.stun>0){m.stun--;if(shown()){log(L(`${d.nom} ist gelähmt.`,`${d.nom} is stunned.`),'dim');await sleep(250)}return}
+  if(d.passive)return;   // Schildpylon: steht nur da
   if(m.spit>0)m.spit--;
   let sees=canSee(m);
   const notice=()=>{if(!m.aware){m.aware=true;if(shown())log(L(`${d.nom} entdeckt dich!`,`${d.nom} spots you!`),'warn')}m.known={x:p.x,y:p.y}};
   if(sees)notice();
   if(d.boss&&m.aware){
     m.spawn++;
-    if(m.spawn%3===0&&G.mons.filter(o=>o.t==='larva'&&o.hp>0).length<4){
+    if(m.spawn%3===0&&G.mons.filter(o=>o.t===d.spawns&&o.hp>0).length<4){
       const spots=D8.map(([dx,dy])=>[m.x+dx,m.y+dy]).filter(([x,y])=>freeFor(m,x,y));
-      if(spots.length){const[x,y]=spots[Math.floor(rnd()*spots.length)];const l=newMon('larva',x,y);l.aware=true;l.known={x:p.x,y:p.y};G.mons.push(l);
-        computeVis();if(shown())log(L('Die Brutmutter stößt eine Larve aus.','The Brood Mother expels a larva.'),'warn');await sleep(350);return}
+      if(spots.length){const[x,y]=spots[Math.floor(rnd()*spots.length)];const l=newMon(d.spawns,x,y);l.aware=true;l.known={x:p.x,y:p.y};G.mons.push(l);
+        computeVis();if(shown())log(ct('spawn'),'warn');await sleep(350);if(gone())return;if(!d.nomelee)return}   // der Kern feuert trotzdem weiter
     }
   }
   if(!m.known)return;
   const attack=async()=>{
     if(!sees)return false;
     if(cheb(m,p)===1&&!d.nomelee){if(shown())await sleep(150);if(gone())return true;monAttack(m,mAtk(m),'hit');await sleep(300);return true}
-    if(d.range&&cheb(m,p)<=d.range&&(!d.boss||(cheb(m,p)>1&&m.spit<=0))){
-      fx.push({type:'line',a:{x:m.x,y:m.y},b:{x:p.x,y:p.y},col:d.boss||d.acid?'#8bdc5f':'#ff4d3d',t0:performance.now(),dur:240});
-      if(d.boss){m.spit=2;SFX.spit();monAttack(m,6,'spit')}else if(d.acid){SFX.spit();monAttack(m,mAtk(m),'spit')}else{SFX.zap();monAttack(m,mAtk(m),'shoot')}
+    if(d.range&&cheb(m,p)<=d.range&&(!d.boss||((cheb(m,p)>1||d.nomelee)&&m.spit<=0))){
+      fx.push({type:'line',a:{x:m.x,y:m.y},b:{x:p.x,y:p.y},col:(d.boss&&!d.robot)||d.acid?'#8bdc5f':'#ff4d3d',t0:performance.now(),dur:240});
+      if(d.boss&&d.robot){m.spit=d.rcd;SFX.zap();monAttack(m,d.rdmg,'shoot')}else if(d.boss){m.spit=d.rcd;SFX.spit();monAttack(m,d.rdmg,'spit')}else if(d.acid){SFX.spit();monAttack(m,mAtk(m),'spit')}else{SFX.zap();monAttack(m,mAtk(m),'shoot')}
       await sleep(320);return true;
     }
     return false;
@@ -580,7 +600,7 @@ function saveRun(){if(G&&G.tut)return;
 function finish(){
   if(finishing)return;finishing=true;G.over=true;busy=false;
   if(G.tut){updateUI();later(()=>{if(G&&G.over)endTutorial(false)},G.quit?0:1200);return}   // Tutorial: kein Eintrag, zurück zum Start
-  const entry={id:Date.now(),score:score(),cls:G.cls,seed:G.seed,day:G.day||null,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
+  const entry={id:Date.now(),score:score(),cls:G.cls,camp:G.camp,seed:G.seed,day:G.day||null,room:G.room,win:G.win,rounds:G.rounds,kills:G.kills,lvl:G.p.lvl,cause:G.cause,xp:G.xpTotal,cleared:G.cleared,quit:!!G.quit};
   // Abgebrochene Runs zählen nicht für die Bestenliste. Aufzeichnung (rec, lp0) nur für das Eintragen, nicht im Browser speichern.
   if(watch){updateUI();const w=watch;later(()=>{if(watch===w)emit('watch','end',entry)},900);return}   // Wiederholung: nichts speichern
   lastEntry={...entry,rec:G.rec||null,lp0:G.lp0,ach:entry.quit?[]:award({...entry,st:G.st})};if(!entry.quit)saveScore(entry);updateUI();
@@ -599,7 +619,7 @@ function validRun(data){
   try{
     if(!data||data.screen!=='game')return false;
     const G=data.G;if(!G||typeof G!=='object')return false;
-    if(typeof G.seed!=='string'||!/^[A-Z0-9]{1,10}$/.test(G.seed)||!CLS[G.cls])return false;
+    if(typeof G.seed!=='string'||!/^[A-Z0-9]{1,10}$/.test(G.seed)||!CLS[G.cls]||!isInt(G.camp,0,CAMPS.length-1))return false;
     if(G.alive!==true||G.over||!isInt(G.room,1,ROOMS)||!['player','enemy','explore'].includes(G.phase))return false;
     if(!Array.isArray(G.map)||G.map.length!==RW*RH||!G.map.every(t=>isInt(t,0,POD)))return false;
     if(!Array.isArray(G.deco)||G.deco.length!==RW*RH||!G.deco.every(isNum))return false;
@@ -684,5 +704,5 @@ export {S,timing,PERKS,ACTIONS,runHash,
   endTurn_ as endTurn,stepPlayer_ as stepPlayer,tileClick_ as tileClick,fireButton_ as fireButton,ability_ as ability,ability2_ as ability2,
   useItem_ as useItem,dropItem_ as dropItem,pickupHere_ as pickupHere,takePerk_ as takePerk,cancelTarget_ as cancelTarget,
   quitRun,restore,validRun,setWatch,abortRun,watchAutoEnd,setScreen,setSel,setHover,computeVis,updateUI,
-  sentryAt,mineAt,sight,
+  sentryAt,mineAt,sight,guarded,
   atk,def,need,dodge,abCd,score,live,canInput,inCombat,monAt,visMonAt,itemAt,canSee,canShoot,shootable,shootTargets,nadeOk,pathTo,unl,lp};

@@ -25,10 +25,11 @@ const AMBIENT=.5;   // Grunddunkelheit der Station (0 = hell, 1 = schwarz)
 /* Partikelfarben beim Tod, passend zur Farbe der Gegner */
 const DEATH={larva:[0x8bdc5f,0x3f8a2c],drone:[0xffe066,0x9aa6b2,0xffb000],mutant:[0xb779e8,0x5b2e86,0xff4d3d],turret:[0xffe066,0x9aa6b2,0xff4d3d],
   hunter:[0x5fd3e6,0x227f92,0xffe066],walker:[0xffe066,0x9aa6b2,0x56616e],queen:[0xb779e8,0x8bdc5f,0xffe066],
-  spitter:[0x8bdc5f,0x3f8a2c,0xff4d3d],breaker:[0xb779e8,0x5b2e86,0x9aa6b2]};
+  spitter:[0x8bdc5f,0x3f8a2c,0xff4d3d],breaker:[0xb779e8,0x5b2e86,0x9aa6b2],
+  swarm:[0xff4d3d,0x9aa6b2,0x56616e],welder:[0xff8a3d,0xffe066,0x56616e],sniper:[0xff4d3d,0xc7d0d8,0x56616e],pylon:[0x5fd3e6,0x227f92,0xffe066],core:[0xff4d3d,0xffe066,0xc7d0d8]};
 /* Geschütz des Ingenieurs: das Geschütz-Sprite mit blauem Licht */
 const SENTRY_MAP={r:'#5fd3e6',R:'#227f92'};
-const HOVER={drone:1};   // schwebt: kleiner, blasser Schatten
+const HOVER={drone:1,swarm:1};   // schwebt: kleiner, blasser Schatten
 
 export class GameScene extends Phaser.Scene{
   constructor(){super('game')}

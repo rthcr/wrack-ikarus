@@ -67,7 +67,7 @@ export async function runBot(api, wait, maxSteps = 4000, human = false) {
     }
   }
   const G = api.G();
-  return {
+  return { camp: (api.G() || {}).camp || 0,
     seed: G.seed, cls: G.cls, room: G.room, maxRoom, win: G.win, over: G.over, alive: G.alive, rounds: G.rounds,
     kills: G.kills, xp: G.xpTotal, lvl: G.p.lvl, hp: G.p.hp, ammo: G.p.ammo, inv: G.p.inv.join('+'), path: G.path,
     cause: G.cause, logs: G.log.length, lastLog: G.log[0] && G.log[0].t, steps,

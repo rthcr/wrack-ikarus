@@ -14,7 +14,7 @@ const EN={
   rule1:'<b>Every round: move + 1 action</b>You move up to 3 tiles (Scout: 4) and get one action: melee, shot, item or ability. With “End turn” the enemies move.',
   rule2:'<b>Every room is a fight</b>The door behind you locks. Only when all enemies are dead do 2–3 doors open. Their displays tell you what waits behind them.',
   rule3:'<b>Cover matters</b>Crates and consoles block line of sight. Enemies only notice you with a clear line of sight; otherwise they search where they last saw you.',
-  pickClass:'1 · Choose a class',pickSeed:'2 · Set a seed',roll:'Roll',
+  pickClass:'1 · Choose a class',pickSeed:'2 · Campaign and seed',roll:'Roll',
   seedHint:'Same seed and same door choices give the same rooms and enemies. Send it to friends and compare your scores.',
   dailyLbl:'Seed of the day',dailyBoardLbl:'Today’s leaderboard',
   globalLbl:'Leaderboard · all players',localLbl:'Your runs in this browser',

@@ -13,12 +13,17 @@ const FLOORS=[
   {base:'#1f2b28',seam:'#131b19',hi:'#293934',rivet:'#364a42'}, // Wohnbereich
   {base:'#2c2420',seam:'#1b1613',hi:'#392f29',rivet:'#4b3c33'}, // Reaktorring
   {base:'#251d2c',seam:'#17111d',hi:'#2f2539',rivet:'#3d304a'}, // Brutkammer
+  // Kampagne 2: Tiefenstation Minos
+  {base:'#2a2a26',seam:'#191916',hi:'#373731',rivet:'#4a4a40'}, // Förderdeck (Stein und Stahl)
+  {base:'#30211a',seam:'#1d130f',hi:'#402c22',rivet:'#573a2b'}, // Schmelzwerk (Rost und Glut)
+  {base:'#1a2630',seam:'#101820',hi:'#22323f',rivet:'#2e4354'}, // Rechenkern (kaltes Blau)
+  {base:'#1e1f2a',seam:'#12131b',hi:'#282a38',rivet:'#3a2a30'}, // Kernkammer
 ];
 
 const lampOn=(deco,now)=>((((now/600)+deco*13)|0)%2)===1;
 const isFace=(G,i)=>{const below=i+RW<RW*RH?G.map[i+RW]:WALL;return below===FLOOR||below===BLOCK};
 
-function floor(ctx,x,y,f,deco,tier,now){
+function floor(ctx,x,y,f,deco,tier,now,camp){
   const r=(c,a,b,w,h)=>{ctx.fillStyle=c;ctx.fillRect(x+a,y+b,w,h)};
   r(f.base,0,0,16,16);
   r(f.hi,0,0,16,1);r(f.hi,0,0,1,16);
@@ -31,6 +36,11 @@ function floor(ctx,x,y,f,deco,tier,now){
   }else if(deco<.16){ // Plattenfuge
     r(f.seam,1,8,14,1);r(f.hi,1,9,14,1);
   }
+  if(camp===1){ // Minos: Glutritzen im Schmelzwerk, Datenleitungen im Rechenkern und in der Kernkammer
+    if(tier===2&&deco>.3&&deco<.42){const g=.35+.3*Math.sin(now/400+deco*40);ctx.fillStyle=`rgba(255,138,61,${g})`;ctx.fillRect(x+3,y+7,10,1);ctx.fillRect(x+7,y+4,1,7);ctx.fillStyle=`rgba(255,224,102,${g})`;ctx.fillRect(x+7,y+7,1,1)}
+    if(tier>=3&&deco>.3&&deco<.45){const on=((now/300+deco*50)|0)%4;r(tier===4?'#5a1f24':'#174552',0,8,16,1);r(tier===4?'#ff4d3d':'#5fd3e6',on*4,8,2,1)}
+    return;
+  }
   if(tier===3&&deco>.3&&deco<.37){for(let k=0;k<16;k+=4){r('#ffb000',k,13,2,2);r('#14181e',k+2,13,2,2)}}
   if(tier===4&&deco>.78&&deco<.88){ // Schleim
     ctx.fillStyle='rgba(139,220,95,.18)';ctx.fillRect(x+4,y+6,7,4);ctx.fillRect(x+5,y+5,5,6);
@@ -39,7 +49,7 @@ function floor(ctx,x,y,f,deco,tier,now){
 }
 
 export function drawTile(ctx,G,t,i,x,y,now){
-  const deco=G.deco[i],tier=tierOf(G.room),f=FLOORS[tier-1];
+  const deco=G.deco[i],tier=tierOf(G.room),camp=G.camp===1?1:0,f=FLOORS[camp*4+tier-1];
   const r=(c,a,b,w,h)=>{ctx.fillStyle=c;ctx.fillRect(x+a,y+b,w,h)};
 
   if(t===WALL){
@@ -63,10 +73,16 @@ export function drawTile(ctx,G,t,i,x,y,now){
     return;
   }
 
-  floor(ctx,x,y,f,t===FLOOR?deco:.5,tier,now);
+  floor(ctx,x,y,f,t===FLOOR?deco:.5,tier,now,camp);
   if(t===FLOOR)return;
 
   if(t===BLOCK){
+    if(G.boss&&camp===1){ // Rechnerschrank der Kernkammer
+      r('#0b0e13',2,1,12,15);r('#2c343e',3,2,10,13);r('#3f4a57',3,2,10,1);
+      for(let k=0;k<5;k++){r('#0f1a22',4,4+k*2,8,1);const on=((now/180+deco*30+k*1.7)|0)%5;r(on===0?'#ff4d3d':on===1?'#ffe066':'#5a1f24',4+((k*3+((deco*10)|0))%7),4+k*2,1,1)}
+      r('#56616e',3,14,10,1);
+      return;
+    }
     if(G.boss){ // Harzkokon der Brutkammer
       r('#1a0f26',2,15,12,1);
       r('#3a1f57',3,3,10,12);r('#3a1f57',2,5,12,8);r('#5b2e86',4,4,8,10);r('#5b2e86',3,6,10,6);
@@ -128,11 +144,12 @@ export function envLights(G,now){
     const t=G.map[i],x=(i%RW)*TS,y=((i/RW)|0)*TS,deco=G.deco[i];
     if(t===WALL&&deco<.12&&isFace(G,i)&&lampOn(deco,now))out.push({x:x+8,y:y+13,r:44,col:0x5fd3e6,i:.75});
     else if(t===BLOCK&&!G.boss&&deco>=.45&&deco<.75)out.push({x:x+8,y:y+8,r:30,col:0x5fd3e6,i:.5+.1*Math.sin(now/200+deco*30)});
-    else if(t===BLOCK&&G.boss)out.push({x:x+8,y:y+9,r:30,col:0x8bdc5f,i:.4+.25*Math.sin(now/300+deco*9)});
+    else if(t===BLOCK&&G.boss)out.push({x:x+8,y:y+9,r:30,col:G.camp===1?0xff4d3d:0x8bdc5f,i:.4+.25*Math.sin(now/300+deco*9)});
     else if(t===EXIT)out.push({x:x+8,y:y+8,r:52,col:0xffb000,i:.6+.3*Math.sin(now/260)});
     else if(t===DOOR)out.push({x:x+8,y:y+8,r:20,col:0xff4d3d,i:.35});
     else if(t===POD)out.push({x:x+8,y:y+8,r:40,col:G.bossDead&&G.phase==='explore'?0x8bdc5f:0xff4d3d,i:.6});
-    else if(t===FLOOR&&tier===3&&deco>.3&&deco<.37)out.push({x:x+8,y:y+14,r:18,col:0xffb000,i:.25});
+    else if(t===FLOOR&&G.camp===1&&tier===2&&deco>.3&&deco<.42)out.push({x:x+8,y:y+8,r:20,col:0xff8a3d,i:.3});
+    else if(t===FLOOR&&G.camp!==1&&tier===3&&deco>.3&&deco<.37)out.push({x:x+8,y:y+14,r:18,col:0xffb000,i:.25});
   }
   return out;
 }

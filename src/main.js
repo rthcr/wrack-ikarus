@@ -16,7 +16,7 @@ import './audio/sfx.js';
 import './ui/hud.js';
 import './ui/tutorial.js';
 import './ui/watch.js';
-import {showScreen,renderClasses} from './ui/screens.js';
+import {showScreen,renderClasses,setCamp} from './ui/screens.js';
 import './ui/input.js';
 import './ui/settings.js';
 import './ui/titleArt.js';
@@ -83,7 +83,7 @@ function fit(force){
 }
 on('screen',s=>{if(s==='game')requestAnimationFrame(()=>fit(true))});
 // Neuer Run: Seed in die Adresszeile, damit man den Link teilen kann
-on('reset',()=>{if(S.G.tut||S.watch)return;try{history.replaceState(null,'','#seed-'+S.G.seed)}catch(e){}});
+on('reset',()=>{if(S.G.tut||S.watch)return;try{history.replaceState(null,'','#seed-'+S.G.seed+(S.G.camp===1?'-k2':''))}catch(e){}});
 window.addEventListener('resize',()=>{if(S.screen==='game')fit()});
 // Vollbild an/aus: Platz neu verteilen
 for(const ev of ['fullscreenchange','webkitfullscreenchange'])document.addEventListener(ev,()=>{if(S.screen==='game')requestAnimationFrame(()=>fit(true))});
@@ -103,8 +103,8 @@ on('lang',()=>{applyFilter();if(game.canvas)game.canvas.setAttribute('aria-label
 function boot(){
   const saved=loadRun();
   let hs='';try{hs=location.hash||''}catch(e){}
-  const m=/^#seed-([A-Za-z0-9]{1,10})$/.exec(hs);
-  $('seedIn').value=m?normSeed(m[1]):randomSeed();
+  const m=/^#seed-([A-Za-z0-9]{1,10})(-k2)?$/.exec(hs);   // -k2: Link gilt für die zweite Kampagne
+  $('seedIn').value=m?normSeed(m[1]):randomSeed();if(m)setCamp(m[2]?1:0);
   if(saved&&saved.sel)setSel(saved.sel);
   renderClasses();
   // Ein beschädigter Spielstand darf den Start nicht verhindern: dann verwerfen und zum Titel

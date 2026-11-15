@@ -11,11 +11,12 @@ const FAST=80;   // Runden für „Blitzbergung“
 const ACH=[
   {id:'room5',n:['Tief im Wrack','Deep in the wreck'],d:['Erreiche Raum 5.','Reach room 5.'],t:e=>!!e&&e.room>=5},
   {id:'win',n:['Entkommen','Escaped'],d:['Flieh mit der Rettungskapsel.','Escape with the pod.'],t:e=>!!e&&e.win},
+  {id:'win2',n:['Kern abgeschaltet','Core shut down'],d:['Entkomme aus der Tiefenstation Minos.','Escape from Deep Station Minos.'],t:e=>!!e&&e.win&&e.camp===1},
   {id:'clean3',n:['Saubere Arbeit','Clean work'],d:['Sichere in einem Run 3 Räume, ohne Schaden zu nehmen.','Secure 3 rooms in one run without taking damage.'],t:e=>!!e&&e.st.clean>=3},
   {id:'lvl',n:['Veteran','Veteran'],d:['Erreiche in einem Run Stufe 6.','Reach level 6 in one run.'],t:e=>!!e&&e.lvl>=6},
   {id:'mine',n:['Fallensteller','Trapper'],d:['Erledige einen Gegner mit einer Annäherungsmine.','Kill an enemy with a proximity mine.'],t:e=>!!e&&e.st.mineK>=1},
   {id:'sentry',n:['Selbstschussanlage','Automated defense'],d:['Dein Geschütz erledigt in einem Run 5 Gegner.','Your sentry gun kills 5 enemies in one run.'],t:e=>!!e&&e.st.sentryK>=5},
-  {id:'boss',n:['Unberührt','Untouched'],d:['Besiege die Brutmutter, ohne in ihrem Raum Schaden zu nehmen.','Defeat the Brood Mother without taking damage in her room.'],t:e=>!!e&&e.st.boss===1},
+  {id:'boss',n:['Unberührt','Untouched'],d:['Besiege einen Endgegner, ohne in seinem Raum Schaden zu nehmen.','Defeat a final boss without taking damage in its room.'],t:e=>!!e&&e.st.boss===1},
   {id:'noshot',n:['Kalter Lauf','Cold barrel'],d:['Entkomme, ohne einen einzigen Schuss abzugeben.','Escape without firing a single shot.'],t:e=>!!e&&e.win&&e.st.shots===0},
   {id:'noitem',n:['Mit leeren Taschen','Empty pockets'],d:['Entkomme, ohne einen Gegenstand zu benutzen (Ausrüsten zählt nicht).','Escape without using an item (equipping doesn’t count).'],t:e=>!!e&&e.win&&e.st.used===0},
   {id:'fast',n:['Blitzbergung','Lightning salvage'],d:[`Entkomme in höchstens ${FAST} Runden.`,`Escape in ${FAST} rounds or fewer.`],t:e=>!!e&&e.win&&e.rounds<=FAST},

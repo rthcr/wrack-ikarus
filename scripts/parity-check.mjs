@@ -20,7 +20,9 @@ if (one > 0) {
   process.on('unhandledRejection', e => errors.push((e && e.stack) || String(e)));
   const game = await import('../src/core/game.js');
   game.timing.scale = 0;
-  game.startRun('T' + i, classes[i % 4]);
+  // Kampagne wechselt alle vier Runs (jede Klasse spielt beide); --camp 0|1 legt sie fest
+  const ci = process.argv.indexOf('--camp');
+  game.startRun('T' + i, classes[i % 4], { camp: ci > 0 ? Number(process.argv[ci + 1]) : (i >> 2) & 1 });
   const S = game.S;
   const r = await runBot({
     G: () => S.G, busy: () => S.busy, REACH: () => S.REACH, VIS: () => S.VIS,
@@ -35,12 +37,12 @@ if (one > 0) {
 const runs = Number(process.argv[2] || 9);
 let failed = 0;
 for (let i = 0; i < runs; i++) {
-  const out = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--one', String(i)], { encoding: 'utf8' });
+  const out = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--one', String(i), ...(process.argv.includes('--camp') ? ['--camp', process.argv[process.argv.indexOf('--camp') + 1]] : [])], { encoding: 'utf8' });
   let r;
   try { r = JSON.parse(out.stdout.trim().split('\n').pop()); } catch { r = { seed: 'T' + i, cls: classes[i % 4], over: false, errors: [out.stderr || 'keine Ausgabe'] }; }
   if (r.errors.length || !r.over) failed++;
   if (json) console.log(JSON.stringify(r));
-  else console.log(`${r.over ? (r.win ? 'entkommen' : 'Ende') : 'HÄNGT'} · Seed ${r.seed} · ${r.cls} · Raum ${r.room} · Runden ${r.rounds}${r.errors.length ? ' · FEHLER: ' + r.errors[0] : ''}`);
+  else console.log(`${r.over ? (r.win ? 'entkommen' : 'Ende') : 'HÄNGT'} · Seed ${r.seed} · ${r.cls} · K${(r.camp || 0) + 1} · Raum ${r.room} · Runden ${r.rounds}${r.errors.length ? ' · FEHLER: ' + r.errors[0] : ''}`);
 }
 if (!json) console.log(failed ? `${failed} von ${runs} Runs mit Problemen.` : `Alle ${runs} Runs ohne Fehler.`);
 process.exit(failed ? 1 : 0);

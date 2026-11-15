@@ -7,15 +7,15 @@ import { runBot } from './bot.mjs';
 const mem = new Map();
 // Neuladen auch mitten im Ablauf (Laufweg, Gegnerzug): nach einem Speichern im nächsten Mikroschritt
 let midReload = null;
-const browserStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => { mem.set(k, String(v)); if (k === 'wrack-ikarus-run-v5' && midReload) midReload(); }, removeItem: k => mem.delete(k) };
+const browserStorage = { getItem: k => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => { mem.set(k, String(v)); if (k === 'wrack-ikarus-run-v6' && midReload) midReload(); }, removeItem: k => mem.delete(k) };
 globalThis.localStorage = browserStorage;
 const game = await import('../src/core/game.js');
 const { replayRun } = await import('../src/core/replay.js');
-const RUNKEY = 'wrack-ikarus-run-v5';
+const RUNKEY = 'wrack-ikarus-run-v6';
 const classes = ['marine', 'tech', 'scout', 'eng'];
 const runs = Number(process.argv[2] || 30);
 const human = process.argv.includes('--human');   // Zugende abwarten wie ein Mensch
-const FIELDS = ['seed', 'cls', 'room', 'win', 'cleared', 'rounds', 'kills', 'lvl', 'xp', 'score'];
+const FIELDS = ['seed', 'cls', 'camp', 'room', 'win', 'cleared', 'rounds', 'kills', 'lvl', 'xp', 'score'];
 
 // eigener kleiner Zufall für die Neulade-Zeitpunkte (unabhängig vom Spiel)
 let z = 12345; const rand = () => ((z = (z * 1103515245 + 12345) >>> 0) / 4294967296);
@@ -24,7 +24,7 @@ let bad = 0, reloads = 0, events = 0, ms = 0, maxSpins = 0;
 for (let i = 0; i < runs; i++) {
   globalThis.localStorage = browserStorage; game.timing.scale = 0;
   const seed = 'R' + i, cls = classes[i % 4];
-  game.startRun(seed, cls);
+  game.startRun(seed, cls, { camp: (i >> 2) & 1 });   // Kampagne wechselt alle vier Runs
   const S = game.S; let n = 0, myReloads = 0, pending = false;
   midReload = () => {
     if (pending || !S.busy || rand() > 0.02) return;
@@ -51,14 +51,14 @@ for (let i = 0; i < runs; i++) {
   if (orig.quit) continue;
   reloads += myReloads; events += orig.rec.length;
   const t0 = performance.now();
-  const r = await replayRun({ seed: orig.seed, cls: orig.cls, lp0: orig.lp0, day: orig.day, rec: orig.rec });
+  const r = await replayRun({ seed: orig.seed, cls: orig.cls, camp: orig.camp, lp0: orig.lp0, day: orig.day, rec: orig.rec });
   ms += performance.now() - t0;
   if (r.ok) maxSpins = Math.max(maxSpins, r.spins / orig.rec.length);
   const diff = r.ok ? FIELDS.filter(f => r.entry[f] !== orig[f]) : [];
   if (!r.ok || diff.length) {
     bad++;
     console.log(`ABWEICHUNG · ${seed} ${cls} · Neuladen ${myReloads} · ${r.ok ? diff.map(f => `${f}: ${orig[f]} → ${r.entry[f]}`).join(', ') : r.reason}`);
-  } else console.log(`ok · ${seed} ${cls} · Raum ${orig.room}${orig.win ? ' (entkommen)' : ''} · ${orig.rec.length} Eingaben · ${myReloads}× neu geladen · LP am Start ${orig.lp0}`);
+  } else console.log(`ok · ${seed} ${cls} · K${orig.camp + 1} · Raum ${orig.room}${orig.win ? ' (entkommen)' : ''} · ${orig.rec.length} Eingaben · ${myReloads}× neu geladen · LP am Start ${orig.lp0}`);
 }
 console.log(`\n${runs - bad} von ${runs} Runs stimmen überein · ${reloads}× neu geladen · ${events} Eingaben · Nachspielen im Schnitt ${(ms / Math.max(1, runs - bad)).toFixed(0)} ms · höchstens ${maxSpins.toFixed(0)} Rechenschritte je Eingabe`);
 process.exit(bad ? 1 : 0);
