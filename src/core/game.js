@@ -664,7 +664,8 @@ const runHash=g=>{const {log,name,...rest}=g;const s=JSON.stringify(rest);return
    Der Server spielt den Run damit nach (core/replay.js) und trägt nur ein, was dabei herauskommt.
    Interne Aufrufe (z. B. stepPlayer → endTurn, automatisches Zugende) werden nicht aufgezeichnet. */
 const recArg=v=>typeof v==='boolean'?+v:v;
-function rec(code,args){if(G&&G.rec)G.rec.push([code,G.rounds,G.phase==='explore'?'x':'p',...args.map(recArg)])}
+/* Nur ganze Zahlen aufzeichnen: Alles andere (z. B. ein versehentlich durchgereichtes Klick-Ereignis) macht die Aufzeichnung ungültig */
+function rec(code,args){if(G&&G.rec)G.rec.push([code,G.rounds,G.phase==='explore'?'x':'p',...args.map(recArg).filter(Number.isInteger)])}
 const recorded=(code,ok,fn)=>(...a)=>{if(watch&&!watch.feed)return;if(ok(...a))rec(code,a);return fn(...a)};
 const okInput=()=>canInput();
 const ACTIONS={

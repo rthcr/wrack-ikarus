@@ -182,6 +182,9 @@ module.exports = async function handler(req, res) {
         res.status(400).json({ error: 'Dieser Run kann nicht geprüft werden.' });
         return;
       }
+      // Ältere Fassungen des Spiels haben beim Klick auf einen Fähigkeits-Knopf das Klick-Ereignis mit aufgezeichnet.
+      // Die Fähigkeiten (a, b) haben keine Argumente: Überzähliges dort abschneiden, damit solche Runs gültig bleiben.
+      body.rec = body.rec.map((ev) => (Array.isArray(ev) && (ev[0] === 'a' || ev[0] === 'b') && ev.length > 3 ? ev.slice(0, 3) : ev));
       const t0 = Date.now();
       const r = await replay({ seed: e.seed, cls: e.cls, camp: e.camp, lp0: body.lp0, day: isDayFormat(body.day) ? body.day : null, rec: body.rec });
       const diff = r.ok ? SAME.filter((k) => r.entry[k] !== e[k]) : [];

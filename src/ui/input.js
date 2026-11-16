@@ -33,7 +33,8 @@ document.addEventListener('keydown',e=>{
 });
 document.querySelectorAll('.pad button').forEach(b=>b.addEventListener('click',()=>{const[dx,dy]=b.dataset.d.split(',').map(Number);stepPlayer(dx,dy)}));
 $('endBtn').onclick=()=>{if(canInput()&&inCombat())endTurn()};
-$('fireBtn').onclick=()=>fireButton(false);$('abBtn').onclick=ability;$('ab2Btn').onclick=ability2;
+$('fireBtn').onclick=()=>fireButton(false);// Nicht direkt zuweisen: Sonst landet das Klick-Ereignis als Argument in der Aufzeichnung und der Server lehnt den Run ab
+$('abBtn').onclick=()=>ability();$('ab2Btn').onclick=()=>ability2();
 let quitArmed=null;
 $('quitBtn').onclick=()=>{const b=$('quitBtn');
   if(!quitArmed){b.textContent=L('Wirklich abbrechen?','Really abandon?');b.classList.add('warn');quitArmed=setTimeout(()=>{quitArmed=null;b.textContent=L('Run abbrechen','Abandon run');b.classList.remove('warn')},3000);return}
