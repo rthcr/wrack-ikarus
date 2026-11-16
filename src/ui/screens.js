@@ -109,7 +109,7 @@ function renderGlobal(el,list,hl,kind){
   if(list==='loading')return note(L('Lade Bestenliste …','Loading leaderboard …'));
   if(list===null)return note(L('Die gemeinsame Bestenliste ist hier gerade nicht erreichbar.','The shared leaderboard can’t be reached from here right now.'));
   if(!list.length)return note(kind==='day'?L('Heute hat sich noch niemand eingetragen. Der erste Platz ist frei.','Nobody has submitted a run today. First place is free.'):L('Noch niemand eingetragen. Der erste Platz ist frei.','Nobody on the board yet. First place is free.'));
-  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span class="nm">${esc(s.name)}${playBtn(s,kind)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)+campTag(s)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
+  el.innerHTML=list.slice(0,10).map((s,i)=>`<li${hl&&s.id===hl?' class="new"':''}><span class="rk">${i+1}.</span><span class="sc">${nf(+s.score||0)}</span><span class="nm row"><span class="nt">${esc(s.name)}</span>${playBtn(s,kind)}</span><span class="sd">${CLS[s.cls]?CLS[s.cls].n:''}${kind==='day'?'':' · '+esc(s.seed)+campTag(s)}</span><span class="rs${s.win?' win':''}">${s.win?L('entkommen','escaped'):L('Raum ','Room ')+Number(s.room)}</span>${kind==='day'?timeSpan(s.date):dateSpan(s.date)}</li>`).join('');
 }
 /* Knopf „Run ansehen“: nur für Einträge mit Aufzeichnung in der aktuellen Fassung der Spielregeln (ui/watch.js spielt ab) */
 let boardDay='';
