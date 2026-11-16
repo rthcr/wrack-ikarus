@@ -6,9 +6,8 @@ import {S,ACTIONS,timing,startRun,restore,runHash,setWatch,abortRun,watchAutoEnd
 import {checkRec} from '../core/replay.js';
 import {CLS,ROOMS,VER,CAMPS} from '../core/config.js';
 import {L,nf} from '../core/i18n.js';
-import {on} from '../core/bus.js';
+import {on,emit} from '../core/bus.js';
 import {unlock} from '../audio/sfx.js';
-import {showScreen} from './screens.js';
 
 const $=id=>document.getElementById(id);
 const API=__SITE__+'/api/scores';
@@ -83,7 +82,8 @@ function stopWatch(quiet){
   clearInterval(W.timer);const back=W.back;W=null;
   abortRun();setWatch(null);timing.scale=1;
   $('watchBox').hidden=true;$('scrGame').classList.remove('watching');
-  if(!quiet)showScreen(back);
+  // Über das Ereignis wechseln, nicht direkt: Titelbild, Musik und Tutorial-Hinweis hören darauf
+  if(!quiet)emit('screen',back);
 }
 
 on('watch',(kind,entry)=>{if(W&&kind==='end'){W.state='end';W.entry=entry;clearInterval(W.timer);label()}});

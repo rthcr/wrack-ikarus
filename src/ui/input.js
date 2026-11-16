@@ -1,4 +1,5 @@
 // Eingabe über Tastatur, Steuerkreuz und Knöpfe. Klicks aufs Spielfeld verarbeitet die Phaser-Szene.
+import {emit} from '../core/bus.js';
 import {S,startRun,endTurn,stepPlayer,fireButton,ability,ability2,useItem,dropItem,pickupHere,takePerk,cancelTarget,quitRun,setSel,canInput,inCombat} from '../core/game.js';
 import {normSeed,randomSeed,dayKey,dailySeed} from '../core/rng.js';
 import {unlock} from '../audio/sfx.js';
@@ -47,7 +48,7 @@ $('startBtn').onclick=startFromTitle;
 $('dailyBtn').onclick=()=>{unlock();const s=dailySeed(dayKey());$('seedIn').value=s;startRun(s,S.sel)};
 $('sendBtn').onclick=sendScore;
 $('againBtn').onclick=()=>{unlock();const e=S.lastEntry;if(e)startRun(e.seed,e.cls,{camp:e.camp===1?1:0})};
-$('newBtn').onclick=()=>{const e=S.lastEntry;if(e){$('seedIn').value=e.seed;setSel(e.cls);setCamp(e.camp);renderClasses()}showScreen('title')};
+$('newBtn').onclick=()=>{const e=S.lastEntry;if(e){$('seedIn').value=e.seed;setSel(e.cls);setCamp(e.camp);renderClasses()}emit('screen','title')};
 // Kopieren: mehrzeiliger Text mit Raumleiste und Link (das Textfeld zeigt nur eine Zeile)
 function copyResult(){const inp=$('shareTxt'),b=$('copyBtn'),s=currentShare();
   const fallback=()=>{inp.focus();inp.select();b.textContent=L('Markiert, jetzt kopieren','Selected, copy now')};
